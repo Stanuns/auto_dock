@@ -54,6 +54,8 @@ private:
     geometry_msgs::msg::PointStamped dock_key1_start, dock_key4_end, dock_center;
     geometry_msgs::msg::PoseStamped dock_center_pose;
 
+    std::vector<float> ranges_filtered; 
+
 
 };
 

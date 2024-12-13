@@ -4,7 +4,8 @@
  * 根据LaserScan的取值发布 dock的关键部位 在 Lidar坐标系（Lidar_coord）下的坐标
  * 该Lidar坐标满足以下要求：
  * 1）以Lidar当前位姿为坐标原点（0.0.0）（需要利用tf转换到机器人本体坐标系中的坐标）
- * 2) 以Lidar的0角度为x轴正方向 逆时针旋转pi/2角度为y轴正方向
+ * 2) 以Lidar的0角度为x轴正方向 逆时针旋转pi/2角度为y轴正方向: 
+ * wheeltec：Lidar 0角度是往自身正中心方向（以为），逆时针旋转为正方向
  * 3）随着rplidar的角度增大（0 ～ 2×pi），在坐标轴上的表现是一个逆时针的过程
  * 将该数据发布到topic    /relative_dock_pose
  * **/
@@ -24,7 +25,7 @@ using namespace Eigen;
 
 LidarAlign::LidarAlign():
 Node("lidar_align") {
-    r_inf = 1000000.0; //定义当lidar扫描的值为std::numeric_limits<double>::infinity()时的一个较大值10^6，方便后续计算相关度
+    r_inf = 100.0; //定义当lidar扫描的值为std::numeric_limits<double>::infinity()时的一个较大值10^6，方便后续计算相关度
     scan_sub_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 1, 
                 std::bind(&LidarAlign::scanProc, this, std::placeholders::_1));
     relative_dock_pose_pub_= create_publisher<geometry_msgs::msg::PoseStamped>(//发送此数据到底盘进行控制
@@ -44,23 +45,46 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     tf2::Quaternion tf2_quat;
 
     //debug
-    RCLCPP_INFO(this->get_logger(), "scan: ranges[139]:%.6f, ranges[140]:%.6f, ranges[141]:%.6f, ranges[142]:%.6f", scan->ranges[139],scan->ranges[140],scan->ranges[141],scan->ranges[142]);
+    RCLCPP_INFO(this->get_logger(), "scan: ranges[185]:%.6f, ranges[186]:%.6f, ranges[187]:%.6f, ranges[188]:%.6f", scan->ranges[185],scan->ranges[186],scan->ranges[187],scan->ranges[188]);
     RCLCPP_INFO(this->get_logger(), "scan: ranges[189]:%.6f, ranges[190]:%.6f, ranges[191]:%.6f, ranges[192]:%.6f", scan->ranges[189],scan->ranges[190],scan->ranges[191],scan->ranges[192]);
     
+    //对scan进行过滤, 对于wheeltec的激光雷达有nan的值
+    ranges_filtered.resize(scan_count);
+    for(int i = 0; i < scan_count; i++){
+        r = scan->ranges[i];
+        if( r > scan->range_max || std::isnan(r) || std::isinf(r)){
+            ranges_filtered[i] = r_inf;
+        }else{
+            ranges_filtered[i] = r;
+        }
+    }
+    for(int i = 1; i < scan_count-2; i++){
+        if(ranges_filtered[i] > r_inf-1 && (fabs(ranges_filtered[i+1] - ranges_filtered[i-1]) < 0.03)){
+            ranges_filtered[i] = (ranges_filtered[i+1] + ranges_filtered[i-1]) / 2.0;
+        }else if(ranges_filtered[i] > r_inf-1 && ranges_filtered[i+1] > r_inf-1 && (fabs(ranges_filtered[i+2] - ranges_filtered[i-1]) < 0.03)){
+            ranges_filtered[i] = ranges_filtered[i+1] = (ranges_filtered[i+2] + ranges_filtered[i-1]) / 2.0;
+        }
+
+    }
+
 
 
     //存储各个 point_simul，point_scan 相关度的值
     point_scan = MatrixXf::Zero(2,scan_count);
     for(int i=0; i<scan_count; i++){
-        r = scan->ranges[i];
-        if(r > scan->range_max || std::isnan(r)){
-            point_scan(0,i) = r_inf;
-            point_scan(1,i) = r_inf;
-        }else{
-            theta = scan->angle_min + scan->angle_increment * i + 0.0;
-            point_scan(0,i) = r * cos(theta);
-            point_scan(1,i) = r * sin(theta);
-        }
+        // r = scan->ranges[i];
+        // if(r > scan->range_max || std::isnan(r)){
+        //     point_scan(0,i) = r_inf;
+        //     point_scan(1,i) = r_inf;
+        // }else{
+        //     theta = scan->angle_min + scan->angle_increment * i + 0.0;
+        //     point_scan(0,i) = r * cos(theta);
+        //     point_scan(1,i) = r * sin(theta);
+        // }
+        theta = scan->angle_min + scan->angle_increment * i + 0.0;
+        point_scan(0,i) = ranges_filtered[i] * cos(theta);
+        point_scan(1,i) = ranges_filtered[i] * sin(theta);
+
     }
     //    VectorXf rele(scan_count);
 //        VectorXf rele111 = VectorXf::Zero(scan_count);
@@ -70,9 +94,10 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
 
 
     for (int i = 0; i < scan_count; i++) {
-        r = scan->ranges[i];
+        // r = scan->ranges[i];
+        r = ranges_filtered[i];
         theta = scan->angle_min + scan->angle_increment * i + 0.0;
-        if(r > scan->range_max || std::isnan(r)){
+        if(r > scan->range_max){
             continue;
         }
         xs.point.x = r * cos(theta);
@@ -85,14 +110,16 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         for (int j = i + 1; j < (int)(scan_count*1.5); j++) {
 
             if(j >= scan_count){
-                r = scan->ranges[j-scan_count];
+                // r = scan->ranges[j-scan_count];
+                r = ranges_filtered[j-scan_count];
                 theta = scan->angle_min + scan->angle_increment * (j-scan_count) + 0.0;
             }else{
-                r = scan->ranges[j];
+                // r = scan->ranges[j];
+                r = ranges_filtered[j];
                 theta = scan->angle_min + scan->angle_increment * j + 0.0;
             }
 
-            if(r > scan->range_max || std::isnan(r)){
+            if(r > scan->range_max){
                 continue;
             }
 
@@ -129,10 +156,12 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         ray_x1.point.z = 0;
         for (int k = i+1; k < i+count_simul; k++){
             if(k >= scan_count){
-                r = scan->ranges[k-scan_count];
+                // r = scan->ranges[k-scan_count];
+                r = ranges_filtered[k-scan_count];
                 theta = scan->angle_min + scan->angle_increment * (k-scan_count) + 0.0;
             }else{
-                r = scan->ranges[k];
+                // r = scan->ranges[k];
+                r = ranges_filtered[k];
                 theta = scan->angle_min + scan->angle_increment * k + 0.0;
             }
 
@@ -148,8 +177,8 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
             {
                 // point_simul(0,k-i) = r_inf; //不需要进行 * cos(theta)
                 // point_simul(1,k-i) = r_inf;
-                point_simul(0,k-i) = cross_point.point.x + 0.037;  //0.037特征结构件厚度
-                point_simul(1,k-i) = cross_point.point.y + 0.0;
+                point_simul(0,k-i) = cross_point.point.x - 0.037;  //0.037特征结构件厚度
+                point_simul(1,k-i) = cross_point.point.y;
             }else{
                 point_simul(0,k-i) = cross_point.point.x;
                 point_simul(1,k-i) = cross_point.point.y;
@@ -221,12 +250,14 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     VectorXf::Index minRow,minCol;
     double min_value = rele.minCoeff(&minRow,&minCol);
     //求dock在lidar坐标系下的位置
-    r = scan->ranges[minRow];
+    // r = scan->ranges[minRow];
+    r = ranges_filtered[minRow];
     theta = scan->angle_min + scan->angle_increment * minRow + 0.0;
     dock_key1_start.point.x = r*cos(theta);
     dock_key1_start.point.y = r*sin(theta);
     dock_key1_start.point.z = 0;
-    r = scan->ranges[index_end(minRow)];
+    // r = scan->ranges[index_end(minRow)];
+    r = ranges_filtered[index_end(minRow)];
     theta = scan->angle_min + scan->angle_increment * index_end(minRow) + 0.0;
     dock_key4_end.point.x = r*cos(theta);
     dock_key4_end.point.y = r*sin(theta);
