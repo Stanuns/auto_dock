@@ -31,6 +31,14 @@ Node("lidar_align") {
     relative_dock_pose_pub_= create_publisher<geometry_msgs::msg::PoseStamped>(//发送此数据到底盘进行控制
                         "/relative_dock_pose", 10);
     cross_point.point.z=0;
+
+    node_ = std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node *) {});
+    tfB_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
+
+    transform_publish_period_ = 0.05;
+    transform_thread_ = std::make_shared<std::thread>
+            (std::bind(&LidarAlign::publishLoop, this, transform_publish_period_));
+    laser_to_dock_.setIdentity();
 }
 
 LidarAlign::~LidarAlign() { ; }
@@ -45,10 +53,10 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     tf2::Quaternion tf2_quat;
 
     //debug
-    RCLCPP_INFO(this->get_logger(), "scan: ranges[185]:%.6f, ranges[186]:%.6f, ranges[187]:%.6f, ranges[188]:%.6f", scan->ranges[185],scan->ranges[186],scan->ranges[187],scan->ranges[188]);
-    RCLCPP_INFO(this->get_logger(), "scan: ranges[189]:%.6f, ranges[190]:%.6f, ranges[191]:%.6f, ranges[192]:%.6f", scan->ranges[189],scan->ranges[190],scan->ranges[191],scan->ranges[192]);
+    // RCLCPP_INFO(this->get_logger(), "scan: ranges[185]:%.6f, ranges[186]:%.6f, ranges[187]:%.6f, ranges[188]:%.6f", scan->ranges[185],scan->ranges[186],scan->ranges[187],scan->ranges[188]);
+    // RCLCPP_INFO(this->get_logger(), "scan: ranges[189]:%.6f, ranges[190]:%.6f, ranges[191]:%.6f, ranges[192]:%.6f", scan->ranges[189],scan->ranges[190],scan->ranges[191],scan->ranges[192]);
     
-    //对scan进行过滤, 对于wheeltec的激光雷达有nan的值
+    //对scan进行过滤, 原因：wheeltec的激光雷达有nan的值
     ranges_filtered.resize(scan_count);
     for(int i = 0; i < scan_count; i++){
         r = scan->ranges[i];
@@ -64,10 +72,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         }else if(ranges_filtered[i] > r_inf-1 && ranges_filtered[i+1] > r_inf-1 && (fabs(ranges_filtered[i+2] - ranges_filtered[i-1]) < 0.03)){
             ranges_filtered[i] = ranges_filtered[i+1] = (ranges_filtered[i+2] + ranges_filtered[i-1]) / 2.0;
         }
-
     }
-
-
 
     //存储各个 point_simul，point_scan 相关度的值
     point_scan = MatrixXf::Zero(2,scan_count);
@@ -177,8 +182,8 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
             {
                 // point_simul(0,k-i) = r_inf; //不需要进行 * cos(theta)
                 // point_simul(1,k-i) = r_inf;
-                point_simul(0,k-i) = cross_point.point.x - 0.037;  //0.037特征结构件厚度
-                point_simul(1,k-i) = cross_point.point.y;
+                point_simul(0,k-i) = (cross_point.point.x > 0) ? (cross_point.point.x + 0.037) : (cross_point.point.x - 0.037);  //0.037特征结构件厚度
+                point_simul(1,k-i) = (cross_point.point.y > 0) ? (cross_point.point.y + 0.01) : (cross_point.point.y - 0.01);
             }else{
                 point_simul(0,k-i) = cross_point.point.x;
                 point_simul(1,k-i) = cross_point.point.y;
@@ -204,7 +209,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         double dd_max = 0;
         for (int n=1;n<count_simul;n++){
             double r_temp = sqrt(pow(point_scan_cut(0,n),2)+pow(point_scan_cut(1,n),2));
-            if(r_temp > scan->range_max || std::isnan(r)){
+            if(r_temp > scan->range_max){
                 continue;
             }
             x1_temp.point.x = point_scan_cut(0,n);
@@ -222,7 +227,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         if(dd_max < DOCK_LENGTH_MIN){
             continue;
         }
-
+        // RCLCPP_INFO(this->get_logger(),"dd_max: %.6f",dd_max);
 
 
         //计算point_simul与point_scan数据的相关度 --误差的平方和
@@ -241,8 +246,6 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         }else if(point_simul.cols() != point_scan_cut.cols()){
             RCLCPP_INFO(this->get_logger(),"--test--2--");
         }
-//        ROS_INFO_STREAM("i="<<i<<", rele:"<<rele(i));
-
     }
 
 
@@ -275,7 +278,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     dock_center.point.x = (dock_key1_start.point.x+dock_key4_end.point.x) / 2;
     dock_center.point.y = (dock_key1_start.point.y+dock_key4_end.point.y) / 2;
     dock_center.point.z = 0;
-    //射线xs-xe的方向逆时针旋转M_PI/2  xs是DOCK_STRUCTURE_KEY1端  xe是DOCK_STRUCTURE_KEY4端
+    //射线xs-xe的方向逆时针旋转M_PI/2  xs是DOCK_STRUCTURE_KEY1端  xe是DOCK_STRUCTURE_KEY4端 atan2范围[-M_PI, M_PI], +M_PI值范围[0, 2*M_PI]
     dock_theta =  atan2(dock_key4_end.point.y-dock_key1_start.point.y, dock_key4_end.point.x-dock_key1_start.point.x) + M_PI/2;
     tf2_quat.setRPY(0, 0, dock_theta);
     dock_pose_quat = tf2::toMsg(tf2_quat);//将偏航角转换成四元数
@@ -287,11 +290,15 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
 //    }
 
     dock_center_pose.header.stamp = this->get_clock()->now();
-    dock_center_pose.header.frame_id = "laser";
+    dock_center_pose.header.frame_id = "dock";
     dock_center_pose.pose.position.x = dock_center.point.x ;
     dock_center_pose.pose.position.y = dock_center.point.y ;
     dock_center_pose.pose.position.z = dock_center.point.z ;
     dock_center_pose.pose.orientation = dock_pose_quat;
+
+    laser_to_dock_mutex_.lock();
+    laser_to_dock_ = tf2::Transform(tf2_quat, tf2::Vector3(dock_center.point.x, dock_center.point.y, 0.0));
+    laser_to_dock_mutex_.unlock();
 
     //过滤：不发布dock_center.point.x = inf 或者 dock_center.point.y = inf 的
     if(dock_center.point.x < std::numeric_limits<double>::infinity()  && dock_center.point.y < std::numeric_limits<double>::infinity()){
@@ -300,10 +307,38 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         //RCLCPP_INFO(this->get_logger(), "There is a inf value in:  %.6f or  %.6f ", dock_center.point.x, dock_center.point.y);
     }
 
+
 //    ROS_INFO_STREAM("scan_count:"<<scan_count<<" r:"<<r<<" theta:"<<theta*180/M_PI<<"deg");
 //    ROS_INFO_STREAM("minRow:"<<minRow<<"  dock_center.point.x:"<<dock_center.point.x<<" dock_center.point.y:"<<dock_center.point.y);
+}
 
+//publish tf: laser_link -> dock_link
+void LidarAlign::publishLoop(double transform_publish_period){
+    if(transform_publish_period == 0)
+        return;
 
+    rclcpp::Rate rate(1.0 / transform_publish_period);
+    while(rclcpp::ok()){
+        publishTransform();
+        rate.sleep();
+    }
+}
+void LidarAlign::publishTransform()
+{
+    laser_to_dock_mutex_.lock();
+    rclcpp::Time tf_expiration = this->get_clock()->now()+ rclcpp::Duration(static_cast<int32_t>(static_cast<rcl_duration_value_t>(transform_publish_period_)), 0);
+    geometry_msgs::msg::TransformStamped transform;
+    transform.header.frame_id = "laser_link";
+    transform.header.stamp = tf_expiration;
+    transform.child_frame_id = "dock_link";
+    try {
+        transform.transform = tf2::toMsg(laser_to_dock_);
+        tfB_->sendTransform(transform);
+    }
+    catch (tf2::LookupException& te){
+        RCLCPP_ERROR(this->get_logger(), te.what());
+    }
+    laser_to_dock_mutex_.unlock();
 }
 
 double LidarAlign::computeEuclideanDistance(geometry_msgs::msg::PointStamped& x1, geometry_msgs::msg::PointStamped& x2) {

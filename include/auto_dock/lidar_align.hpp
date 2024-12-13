@@ -8,6 +8,8 @@
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include <Eigen/Dense>
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/transform_broadcaster.h"
 
 #ifndef SRC_LIDAR_ALIGN_HPP
 #define SRC_LIDAR_ALIGN_HPP
@@ -41,6 +43,8 @@ void scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan);
 double computeEuclideanDistance(geometry_msgs::msg::PointStamped& x1, geometry_msgs::msg::PointStamped& x2);
 void getLinePara(geometry_msgs::msg::PointStamped& x1, geometry_msgs::msg::PointStamped& x2, LinePara& lp);
 void getCrossPoint(LinePara& para1, LinePara& para2, geometry_msgs::msg::PointStamped& cp);
+void publishTransform();
+void publishLoop(double transform_publish_period);
 
 private:
     Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
@@ -55,6 +59,12 @@ private:
     geometry_msgs::msg::PoseStamped dock_center_pose;
 
     std::vector<float> ranges_filtered; 
+    std::shared_ptr<std::thread> transform_thread_;
+    double transform_publish_period_;
+    std::mutex laser_to_dock_mutex_;
+    tf2::Transform laser_to_dock_;
+    std::shared_ptr<tf2_ros::TransformBroadcaster> tfB_;
+    rclcpp::Node::SharedPtr node_;
 
 
 };
