@@ -183,7 +183,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
                 // point_simul(0,k-i) = r_inf; //不需要进行 * cos(theta)
                 // point_simul(1,k-i) = r_inf;
                 point_simul(0,k-i) = (cross_point.point.x > 0) ? (cross_point.point.x + 0.037) : (cross_point.point.x - 0.037);  //0.037特征结构件厚度
-                point_simul(1,k-i) = (cross_point.point.y > 0) ? (cross_point.point.y + 0.01) : (cross_point.point.y - 0.01);
+                point_simul(1,k-i) = (cross_point.point.y > 0) ? (cross_point.point.y + 0.037) : (cross_point.point.y - 0.037);
             }else{
                 point_simul(0,k-i) = cross_point.point.x;
                 point_simul(1,k-i) = cross_point.point.y;
