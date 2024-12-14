@@ -65,6 +65,7 @@ private:
     tf2::Transform laser_to_dock_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tfB_;
     rclcpp::Node::SharedPtr node_;
+    double thick_dock;
 
 
 };

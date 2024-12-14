@@ -31,6 +31,7 @@ Node("lidar_align") {
     relative_dock_pose_pub_= create_publisher<geometry_msgs::msg::PoseStamped>(//发送此数据到底盘进行控制
                         "/relative_dock_pose", 10);
     cross_point.point.z=0;
+    thick_dock = 0.037;
 
     node_ = std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node *) {});
     tfB_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
@@ -182,8 +183,14 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
             {
                 // point_simul(0,k-i) = r_inf; //不需要进行 * cos(theta)
                 // point_simul(1,k-i) = r_inf;
-                point_simul(0,k-i) = (cross_point.point.x > 0) ? (cross_point.point.x + 0.037) : (cross_point.point.x - 0.037);  //0.037特征结构件厚度
-                point_simul(1,k-i) = (cross_point.point.y > 0) ? (cross_point.point.y + 0.037) : (cross_point.point.y - 0.037);
+                // point_simul(0,k-i) = (cross_point.point.x > 0) ? (cross_point.point.x + 0.037) : (cross_point.point.x - 0.037);  //0.037特征结构件厚度
+                // point_simul(1,k-i) = (cross_point.point.y > 0) ? (cross_point.point.y + 0.037) : (cross_point.point.y - 0.037);
+                // 求para_simul与para_ray的夹角
+                double theta_sr = atan2(xe.point.y-xs.point.y, xe.point.x-xs.point.x) - atan2(ray_x2.point.y-ray_x1.point.y, ray_x2.point.x-ray_x1.point.x);
+                double extend_l_ray = thick_dock/sin(theta_sr);
+                point_simul(0,k-i) = cross_point.point.x + cos(theta) * extend_l_ray; 
+                point_simul(1,k-i) = cross_point.point.y + sin(theta) * extend_l_ray;
+                                
             }else{
                 point_simul(0,k-i) = cross_point.point.x;
                 point_simul(1,k-i) = cross_point.point.y;
@@ -278,7 +285,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     dock_center.point.x = (dock_key1_start.point.x+dock_key4_end.point.x) / 2;
     dock_center.point.y = (dock_key1_start.point.y+dock_key4_end.point.y) / 2;
     dock_center.point.z = 0;
-    //射线xs-xe的方向逆时针旋转M_PI/2  xs是DOCK_STRUCTURE_KEY1端  xe是DOCK_STRUCTURE_KEY4端 atan2范围[-M_PI, M_PI], +M_PI值范围[0, 2*M_PI]
+    //射线xs-xe的方向逆时针旋转M_PI/2  xs是DOCK_STRUCTURE_KEY1端  xe是DOCK_STRUCTURE_KEY4端 atan2范围[-M_PI, M_PI]
     dock_theta =  atan2(dock_key4_end.point.y-dock_key1_start.point.y, dock_key4_end.point.x-dock_key1_start.point.x) + M_PI/2;
     tf2_quat.setRPY(0, 0, dock_theta);
     dock_pose_quat = tf2::toMsg(tf2_quat);//将偏航角转换成四元数
@@ -295,6 +302,9 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     dock_center_pose.pose.position.y = dock_center.point.y ;
     dock_center_pose.pose.position.z = dock_center.point.z ;
     dock_center_pose.pose.orientation = dock_pose_quat;
+
+    //对dock_center_pose进行过滤
+    
 
     laser_to_dock_mutex_.lock();
     laser_to_dock_ = tf2::Transform(tf2_quat, tf2::Vector3(dock_center.point.x, dock_center.point.y, 0.0));
