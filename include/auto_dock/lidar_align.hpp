@@ -66,6 +66,7 @@ private:
     std::shared_ptr<tf2_ros::TransformBroadcaster> tfB_;
     rclcpp::Node::SharedPtr node_;
     double thick_dock;
+    double threshold_rele;
 
 
 };

@@ -5,7 +5,7 @@
  * 该Lidar坐标满足以下要求：
  * 1）以Lidar当前位姿为坐标原点（0.0.0）（需要利用tf转换到机器人本体坐标系中的坐标）
  * 2) 以Lidar的0角度为x轴正方向 逆时针旋转pi/2角度为y轴正方向: 
- * wheeltec：Lidar 0角度是往自身正中心方向（以为），逆时针旋转为正方向
+ * wheeltec：Lidar 0角度是往自身正中心方向（往内），逆时针旋转为正方向
  * 3）随着rplidar的角度增大（0 ～ 2×pi），在坐标轴上的表现是一个逆时针的过程
  * 将该数据发布到topic    /relative_dock_pose
  * **/
@@ -32,6 +32,7 @@ Node("lidar_align") {
                         "/relative_dock_pose", 10);
     cross_point.point.z=0;
     thick_dock = 0.037;
+    threshold_rele = 0.0002;
 
     node_ = std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node *) {});
     tfB_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
@@ -183,8 +184,6 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
             {
                 // point_simul(0,k-i) = r_inf; //不需要进行 * cos(theta)
                 // point_simul(1,k-i) = r_inf;
-                // point_simul(0,k-i) = (cross_point.point.x > 0) ? (cross_point.point.x + 0.037) : (cross_point.point.x - 0.037);  //0.037特征结构件厚度
-                // point_simul(1,k-i) = (cross_point.point.y > 0) ? (cross_point.point.y + 0.037) : (cross_point.point.y - 0.037);
                 // 求para_simul与para_ray的夹角
                 double theta_sr = atan2(xe.point.y-xs.point.y, xe.point.x-xs.point.x) - atan2(ray_x2.point.y-ray_x1.point.y, ray_x2.point.x-ray_x1.point.x);
                 double extend_l_ray = thick_dock/sin(theta_sr);
@@ -259,6 +258,11 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     //求VectorXf最小值所在的行数
     VectorXf::Index minRow,minCol;
     double min_value = rele.minCoeff(&minRow,&minCol);
+    //debug
+    RCLCPP_INFO(this->get_logger(),"rele_min_value:%.6f", min_value);
+    if(min_value > threshold_rele){
+        return;
+    }
     //求dock在lidar坐标系下的位置
     // r = scan->ranges[minRow];
     r = ranges_filtered[minRow];
