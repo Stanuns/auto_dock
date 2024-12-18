@@ -10,6 +10,7 @@
 #include <Eigen/Dense>
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/transform_broadcaster.h"
+#include "robot_interfaces/msg/dock_pose_stamped.hpp"
 
 #ifndef SRC_LIDAR_ALIGN_HPP
 #define SRC_LIDAR_ALIGN_HPP
@@ -48,7 +49,8 @@ void publishLoop(double transform_publish_period);
 
 private:
     Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
-    Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr relative_dock_pose_pub_;
+    // Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr relative_dock_pose_pub_;
+    Publisher<robot_interfaces::msg::DockPoseStamped>::SharedPtr relative_dock_pose_pub_;
     int scan_count;
     double r_inf;
     geometry_msgs::msg::PointStamped xs, xe, cross_point; //xs,xe:lidar 的 ray casting打到的点的坐标
@@ -56,7 +58,8 @@ private:
 //    vector<geometry_msgs::PointStamped> point_simul , point_scan;
     MatrixXf point_scan, point_simul, point_scan_cut;
     geometry_msgs::msg::PointStamped dock_key1_start, dock_key4_end, dock_center;
-    geometry_msgs::msg::PoseStamped dock_center_pose;
+    // geometry_msgs::msg::PoseStamped dock_center_pose;
+    robot_interfaces::msg::DockPoseStamped dock_center_pose;
 
     std::vector<float> ranges_filtered; 
     std::shared_ptr<std::thread> transform_thread_;

@@ -28,7 +28,7 @@ Node("lidar_align") {
     r_inf = 100.0; //定义当lidar扫描的值为std::numeric_limits<double>::infinity()时的一个较大值10^6，方便后续计算相关度
     scan_sub_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 1, 
                 std::bind(&LidarAlign::scanProc, this, std::placeholders::_1));
-    relative_dock_pose_pub_= create_publisher<geometry_msgs::msg::PoseStamped>(//发送此数据到底盘进行控制
+    relative_dock_pose_pub_= create_publisher<robot_interfaces::msg::DockPoseStamped>(//发送此数据到底盘进行控制
                         "/relative_dock_pose", 10);
     cross_point.point.z=0;
     thick_dock = 0.037;
@@ -261,58 +261,70 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     //debug
     RCLCPP_INFO(this->get_logger(),"rele_min_value:%.6f", min_value);
     if(min_value > threshold_rele){
-        return;
+
+        dock_center_pose.pose_stamped.header.stamp = this->get_clock()->now();
+        dock_center_pose.pose_stamped.header.frame_id = "dock";
+        dock_center_pose.pose_stamped.pose.position.x = 0.0;
+        dock_center_pose.pose_stamped.pose.position.y = 0.0;
+        dock_center_pose.pose_stamped.pose.position.z = 0.0;
+        dock_center_pose.pose_stamped.pose.orientation.x = 0.0;
+        dock_center_pose.pose_stamped.pose.orientation.y = 0.0;
+        dock_center_pose.pose_stamped.pose.orientation.z = 0.0;
+        dock_center_pose.pose_stamped.pose.orientation.w = 1.0;
+
+        dock_center_pose.relevance = min_value;
+        
+    }else{
+        //求dock在lidar坐标系下的位置
+        // r = scan->ranges[minRow];
+        r = ranges_filtered[minRow];
+        theta = scan->angle_min + scan->angle_increment * minRow + 0.0;
+        dock_key1_start.point.x = r*cos(theta);
+        dock_key1_start.point.y = r*sin(theta);
+        dock_key1_start.point.z = 0;
+        // r = scan->ranges[index_end(minRow)];
+        r = ranges_filtered[index_end(minRow)];
+        theta = scan->angle_min + scan->angle_increment * index_end(minRow) + 0.0;
+        dock_key4_end.point.x = r*cos(theta);
+        dock_key4_end.point.y = r*sin(theta);
+        dock_key4_end.point.z = 0;
+
+        /**
+         * 将lidar坐标系下的坐标转换成机器人本体的坐标
+         * //todo 目前没用到tf转换
+         * 在X轴方向上，rplidar A3的安装位置在两轮中心点的+0.243处
+         * **/
+    //    dock_key1_start.point.x = dock_key1_start.point.x + 0.243;
+    //    dock_key4_end.point.x = dock_key4_end.point.x + 0.243;
+
+        //求dock_key1_start 与 dock_key4_end 连线的中点
+        dock_center.point.x = (dock_key1_start.point.x+dock_key4_end.point.x) / 2;
+        dock_center.point.y = (dock_key1_start.point.y+dock_key4_end.point.y) / 2;
+        dock_center.point.z = 0;
+        //射线xs-xe的方向逆时针旋转M_PI/2  xs是DOCK_STRUCTURE_KEY1端  xe是DOCK_STRUCTURE_KEY4端 atan2范围[-M_PI, M_PI]
+        dock_theta =  atan2(dock_key4_end.point.y-dock_key1_start.point.y, dock_key4_end.point.x-dock_key1_start.point.x) + M_PI/2;
+        tf2_quat.setRPY(0, 0, dock_theta);
+        dock_pose_quat = tf2::toMsg(tf2_quat);//将偏航角转换成四元数
+
+        //test
+    //    if(dock_center.point.x > 1000){
+    //        int aa = index_end(minRow);
+    //      ROS_INFO("--test--");
+    //    }
+
+        dock_center_pose.pose_stamped.header.stamp = this->get_clock()->now();
+        dock_center_pose.pose_stamped.header.frame_id = "dock";
+        dock_center_pose.pose_stamped.pose.position.x = dock_center.point.x ;
+        dock_center_pose.pose_stamped.pose.position.y = dock_center.point.y ;
+        dock_center_pose.pose_stamped.pose.position.z = dock_center.point.z ;
+        dock_center_pose.pose_stamped.pose.orientation = dock_pose_quat;
+
+        dock_center_pose.relevance = min_value;
+        
+        laser_to_dock_mutex_.lock();
+        laser_to_dock_ = tf2::Transform(tf2_quat, tf2::Vector3(dock_center.point.x, dock_center.point.y, 0.0));
+        laser_to_dock_mutex_.unlock();
     }
-    //求dock在lidar坐标系下的位置
-    // r = scan->ranges[minRow];
-    r = ranges_filtered[minRow];
-    theta = scan->angle_min + scan->angle_increment * minRow + 0.0;
-    dock_key1_start.point.x = r*cos(theta);
-    dock_key1_start.point.y = r*sin(theta);
-    dock_key1_start.point.z = 0;
-    // r = scan->ranges[index_end(minRow)];
-    r = ranges_filtered[index_end(minRow)];
-    theta = scan->angle_min + scan->angle_increment * index_end(minRow) + 0.0;
-    dock_key4_end.point.x = r*cos(theta);
-    dock_key4_end.point.y = r*sin(theta);
-    dock_key4_end.point.z = 0;
-
-    /**
-     * 将lidar坐标系下的坐标转换成机器人本体的坐标
-     * //todo 目前没用到tf转换
-     * 在X轴方向上，rplidar A3的安装位置在两轮中心点的+0.243处
-     * **/
-//    dock_key1_start.point.x = dock_key1_start.point.x + 0.243;
-//    dock_key4_end.point.x = dock_key4_end.point.x + 0.243;
-
-    //求dock_key1_start 与 dock_key4_end 连线的中点
-    dock_center.point.x = (dock_key1_start.point.x+dock_key4_end.point.x) / 2;
-    dock_center.point.y = (dock_key1_start.point.y+dock_key4_end.point.y) / 2;
-    dock_center.point.z = 0;
-    //射线xs-xe的方向逆时针旋转M_PI/2  xs是DOCK_STRUCTURE_KEY1端  xe是DOCK_STRUCTURE_KEY4端 atan2范围[-M_PI, M_PI]
-    dock_theta =  atan2(dock_key4_end.point.y-dock_key1_start.point.y, dock_key4_end.point.x-dock_key1_start.point.x) + M_PI/2;
-    tf2_quat.setRPY(0, 0, dock_theta);
-    dock_pose_quat = tf2::toMsg(tf2_quat);//将偏航角转换成四元数
-
-      //test
-//    if(dock_center.point.x > 1000){
-//        int aa = index_end(minRow);
-//      ROS_INFO("--test--");
-//    }
-
-    dock_center_pose.header.stamp = this->get_clock()->now();
-    dock_center_pose.header.frame_id = "dock";
-    dock_center_pose.pose.position.x = dock_center.point.x ;
-    dock_center_pose.pose.position.y = dock_center.point.y ;
-    dock_center_pose.pose.position.z = dock_center.point.z ;
-    dock_center_pose.pose.orientation = dock_pose_quat;
-
-    //对dock_center_pose进行过滤
-    
-
-    laser_to_dock_mutex_.lock();
-    laser_to_dock_ = tf2::Transform(tf2_quat, tf2::Vector3(dock_center.point.x, dock_center.point.y, 0.0));
-    laser_to_dock_mutex_.unlock();
 
     //过滤：不发布dock_center.point.x = inf 或者 dock_center.point.y = inf 的
     if(dock_center.point.x < std::numeric_limits<double>::infinity()  && dock_center.point.y < std::numeric_limits<double>::infinity()){
@@ -320,10 +332,8 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     }else{
         //RCLCPP_INFO(this->get_logger(), "There is a inf value in:  %.6f or  %.6f ", dock_center.point.x, dock_center.point.y);
     }
+    
 
-
-//    ROS_INFO_STREAM("scan_count:"<<scan_count<<" r:"<<r<<" theta:"<<theta*180/M_PI<<"deg");
-//    ROS_INFO_STREAM("minRow:"<<minRow<<"  dock_center.point.x:"<<dock_center.point.x<<" dock_center.point.y:"<<dock_center.point.y);
 }
 
 //publish tf: laser_link -> dock_link
