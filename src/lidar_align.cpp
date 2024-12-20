@@ -262,15 +262,15 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     RCLCPP_INFO(this->get_logger(),"rele_min_value:%.6f", min_value);
     if(min_value > threshold_rele){
 
-        dock_center_pose.pose_stamped.header.stamp = this->get_clock()->now();
-        dock_center_pose.pose_stamped.header.frame_id = "dock";
-        dock_center_pose.pose_stamped.pose.position.x = 0.0;
-        dock_center_pose.pose_stamped.pose.position.y = 0.0;
-        dock_center_pose.pose_stamped.pose.position.z = 0.0;
-        dock_center_pose.pose_stamped.pose.orientation.x = 0.0;
-        dock_center_pose.pose_stamped.pose.orientation.y = 0.0;
-        dock_center_pose.pose_stamped.pose.orientation.z = 0.0;
-        dock_center_pose.pose_stamped.pose.orientation.w = 1.0;
+        dock_center_pose.header.stamp = this->get_clock()->now();
+        dock_center_pose.header.frame_id = "dock_link";
+        dock_center_pose.pose.position.x = 0.0;
+        dock_center_pose.pose.position.y = 0.0;
+        dock_center_pose.pose.position.z = 0.0;
+        dock_center_pose.pose.orientation.x = 0.0;
+        dock_center_pose.pose.orientation.y = 0.0;
+        dock_center_pose.pose.orientation.z = 0.0;
+        dock_center_pose.pose.orientation.w = 1.0;
 
         dock_center_pose.relevance = min_value;
         
@@ -312,12 +312,12 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     //      ROS_INFO("--test--");
     //    }
 
-        dock_center_pose.pose_stamped.header.stamp = this->get_clock()->now();
-        dock_center_pose.pose_stamped.header.frame_id = "dock";
-        dock_center_pose.pose_stamped.pose.position.x = dock_center.point.x ;
-        dock_center_pose.pose_stamped.pose.position.y = dock_center.point.y ;
-        dock_center_pose.pose_stamped.pose.position.z = dock_center.point.z ;
-        dock_center_pose.pose_stamped.pose.orientation = dock_pose_quat;
+        dock_center_pose.header.stamp = this->get_clock()->now();
+        dock_center_pose.header.frame_id = "dock_link";
+        dock_center_pose.pose.position.x = dock_center.point.x ;
+        dock_center_pose.pose.position.y = dock_center.point.y ;
+        dock_center_pose.pose.position.z = dock_center.point.z ;
+        dock_center_pose.pose.orientation = dock_pose_quat;
 
         dock_center_pose.relevance = min_value;
         

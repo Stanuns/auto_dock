@@ -1,0 +1,7 @@
+#ifndef SRC_AUTO_DOCK_SERVER_HPP
+#define SRC_AUTO_DOCK_SERVER_HPP
+
+#define CHARGED 1
+#define UNCHARGED -1
+
+#endif //SRC_AUTO_DOCK_SERVER_HPP

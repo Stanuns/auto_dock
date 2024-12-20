@@ -18,6 +18,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(message_filters REQUIRED)
 
 add_executable(lidar_align src/lidar_align.cpp)
 ament_target_dependencies(
@@ -55,5 +56,51 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch
    DESTINATION share/${PROJECT_NAME})
+
+
+add_library(action_server SHARED
+  src/auto_dock_server.cpp src/dock_driver.cpp src/dock_driver_states.cpp)
+target_include_directories(action_server PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_definitions(action_server
+  PRIVATE "AUTO_DOCK_BUILDING_DLL")
+ament_target_dependencies(action_server
+  "robot_interfaces"
+  "rclcpp"
+  "rclcpp_action"
+  "rclcpp_components"
+  "message_filters"
+  "nav_msgs"
+  "geometry_msgs"
+  "sensor_msgs"
+  "tf2" 
+  "tf2_ros" 
+  "tf2_geometry_msgs")
+rclcpp_components_register_node(action_server PLUGIN "auto_dock::AutoDockActionServer" EXECUTABLE auto_dock_action_server)
+install(TARGETS
+  action_server
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
+
+add_library(action_client SHARED
+  src/auto_dock_client.cpp)
+target_include_directories(action_client PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_definitions(action_client
+  PRIVATE "ACTION_TUTORIALS_CPP_BUILDING_DLL")
+ament_target_dependencies(action_client
+  "robot_interfaces"
+  "rclcpp"
+  "rclcpp_action"
+  "rclcpp_components")
+rclcpp_components_register_node(action_client PLUGIN "auto_dock::AutoDockActionClient" EXECUTABLE auto_dock_action_client)
+install(TARGETS
+  action_client
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
 
 ament_package()
