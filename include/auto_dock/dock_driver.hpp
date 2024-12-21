@@ -13,6 +13,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "robot_interfaces/msg/dock_pose_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 
 
 #ifndef SRC_DOCK_DRIVE_HPP
@@ -33,7 +34,7 @@ public:
 
     RobotState::State getState() const { return state_; }
     std::string getStateStr() const { return state_str_; }
-    void update(geometry_msgs::msg::PoseStamped::SharedPtr pose, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void publishCmd(const double &vx, const double &wz);
 
 
@@ -43,11 +44,11 @@ public:
     }
 
 protected:
-    void updateVelocity(double& yaw_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose, const geometry_msgs::msg::PoseStamped& pose);
-    void computePoseUpdate(double& yaw_update, geometry_msgs::msg::PoseStamped::SharedPtr pose);
-    void idle(RobotState::State& state,double& vx, double& wz); //
-    void scan(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
-    void find_dock(RobotState::State& state,double& vx, double& wz, const geometry_msgs::msg::PoseStamped::ConstSharedPtr pose);
+    void computePoseUpdate(double& yaw_update, nav_msgs::msg::Odometry::SharedPtr odom);
+    void updateVelocity(double& yaw_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void idle(RobotState::State& state, double& vx, double& wz); //
+    void scan(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose, double& yaw_update);
+    void find_dock(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void get_parallel(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void position_align(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void angle_align(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
@@ -56,15 +57,15 @@ protected:
 
 private:
     Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_publisher_;
-    // Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;
+    // Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     int dock_detector_;
-    double rotated_;
+    double rotated_; //角度
 
     RobotState::State state_;
     std::string state_str_;
     double vx_, wz_;
     geometry_msgs::msg::Twist twist_;
-    geometry_msgs::msg::PoseStamped::SharedPtr pose_priv_; //计算computePoseUpdate时用到
+    nav_msgs::msg::Odometry::SharedPtr odom_priv_; //计算computePoseUpdate时用到
 
     void setVel(double v, double w);
     std::vector<std::string> ROBOT_STATE_STR;

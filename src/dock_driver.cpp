@@ -42,83 +42,83 @@ DockDriver::DockDriver() :
 DockDriver::~DockDriver(){;}
 
 
-void DockDriver::update(geometry_msgs::msg::PoseStamped::SharedPtr pose, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
+void DockDriver::update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
 {
     // ecl::LegacyPose2D<double> pose_update;
     double yaw_update;
-    computePoseUpdate(yaw_update, pose);
-    // updateVelocity(yaw_update, relative_dock_pose, pose);
+    computePoseUpdate(yaw_update, odom);
+    updateVelocity(yaw_update, relative_dock_pose);
     RCLCPP_INFO(this->get_logger(), "cmd update, vx_=%.6f. wz_=%.6f. state_=%s", vx_, wz_, state_str_);
     publishCmd(vx_,wz_);
 }
 
-void DockDriver::updateVelocity(double& yaw_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose, const geometry_msgs::msg::PoseStamped& pose)
+void DockDriver::updateVelocity(double& yaw_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
 {
-    // RobotState::State current_state, new_state;
-    // double new_vx = 0.0;
-    // double new_wz = 0.0;
+    RobotState::State current_state, new_state;
+    double new_vx = 0.0;
+    double new_wz = 0.0;
 
-    // // determine the current state based on relative_dock_pose and the previous state
-    // current_state = new_state = state_;
-    // switch((unsigned int)current_state) {
-    //     case RobotState::IDLE:
-    //         idle(new_state, new_vx, new_wz);
-    //         break;
-    //     case RobotState::SCAN:
-    //         scan(new_state, new_vx, new_wz);
-    //         break;
-    //     case RobotState::FIND_DOCK:
-    //         find_dock(new_state, new_vx, new_wz, pose);
-    //         break;
-    //     case RobotState::GET_PARALLEL:
-    //         get_parallel(new_state, new_vx, new_wz, relative_dock_pose);
-    //         break;
-    //     case RobotState::POSITION_ALIGN:
-    //         position_align(new_state, new_vx, new_wz);
-    //         break;
-    //     case RobotState::ANGLE_ALIGN:
-    //         angle_align(new_state, new_vx, new_wz, relative_dock_pose);
-    //         break;
-    //     case RobotState::DOCKING:
-    //         docking(new_state, new_vx, new_wz, relative_dock_pose);
-    //         break;
-    //     case RobotState::DOCKED_IN:
-    //         dock_in(new_state, new_vx, new_wz);
-    //         break;
-    //     default:
-    //         ROS_INFO("-------Wrong state------");
-    //         break;
-    // }
+    // determine the current state based on relative_dock_pose and the previous state
+    current_state = new_state = state_;
+    switch((unsigned int)current_state) {
+        case RobotState::IDLE:
+            idle(new_state, new_vx, new_wz);
+            break;
+        case RobotState::SCAN:
+            scan(new_state, new_vx, new_wz, relative_dock_pose, yaw_update);
+            break;
+        case RobotState::FIND_DOCK:
+            find_dock(new_state, new_vx, new_wz, relative_dock_pose);
+            break;
+        case RobotState::GET_PARALLEL:
+            get_parallel(new_state, new_vx, new_wz, relative_dock_pose);
+            break;
+        case RobotState::POSITION_ALIGN:
+            position_align(new_state, new_vx, new_wz, relative_dock_pose);
+            break;
+        case RobotState::ANGLE_ALIGN:
+            angle_align(new_state, new_vx, new_wz, relative_dock_pose);
+            break;
+        case RobotState::DOCKING:
+            docking(new_state, new_vx, new_wz, relative_dock_pose);
+            break;
+        case RobotState::DOCKED_IN:
+            docked_in(new_state, new_vx, new_wz, relative_dock_pose);
+            break;
+        default:
+            RCLCPP_INFO(this->get_logger(), "-----wrong state-----");
+            break;
+    }
 
-    // setStateVel(new_state, new_vx, new_wz);
-    // state_str_ = ROBOT_STATE_STR[(unsigned int)new_state];
+    setStateVel(new_state, new_vx, new_wz);
+    state_str_ = ROBOT_STATE_STR[(unsigned int)new_state];
 }
 
 void DockDriver::publishCmd(const double &vx, const double &wz){
-    // vx_ = vx;
-    // wz_ = wz;
-    // twist_.linear.x = vx;
-    // twist_.linear.y = 0;
-    // twist_.linear.z = 0;
-    // twist_.angular.x = 0;
-    // twist_.angular.y = 0;
-    // twist_.angular.z = wz;
-    // cmd_publisher_->publish(twist_);
+    vx_ = vx;
+    wz_ = wz;
+    twist_.linear.x = vx;
+    twist_.linear.y = 0;
+    twist_.linear.z = 0;
+    twist_.angular.x = 0;
+    twist_.angular.y = 0;
+    twist_.angular.z = wz;
+    cmd_publisher_->publish(twist_);
 }
 
 
 //根据odometry数据计算pose的变化量
-void DockDriver::computePoseUpdate(double& yaw_update, geometry_msgs::msg::PoseStamped::SharedPtr pose)
+void DockDriver::computePoseUpdate(double& yaw_update, nav_msgs::msg::Odometry::SharedPtr odom)
 {
     if(IfFirstTime){
         IfFirstTime = false;
 
         yaw_update = 0;
-        pose_priv_ = move(pose);
+        odom_priv_ = move(odom);
     }else{
-        double yaw = tf2::getYaw(pose->pose.orientation);
-        yaw_update = tf2::getYaw(pose_priv_->pose.orientation) - yaw;
-        pose_priv_ = move(pose);
+        double yaw = tf2::getYaw(odom->pose.pose.orientation);
+        yaw_update = tf2::getYaw(odom_priv_->pose.pose.orientation) - yaw;
+        odom_priv_ = move(odom);
     }
 }
 

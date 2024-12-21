@@ -58,7 +58,7 @@ public:
 
     odom_sub_.subscribe(this, "/odom_combined");
     relative_dock_pose_sub_.subscribe(this, "/relative_dock_pose");
-    sync_.registerCallback(&AutoDockActionServer::syncCallback, this);
+    // sync_.registerCallback(&AutoDockActionServer::syncCallback, this);
 
     RCLCPP_INFO(this->get_logger(), "AutoDockActionServer initialize done......");
   }
@@ -67,16 +67,44 @@ public:
     delete dock_drive_;
   }
 
-  void syncCallback(const nav_msgs::msg::Odometry::ConstSharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose){
-    RCLCPP_INFO(this->get_logger(), "syncCallback......");
+  void syncCallback(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose){
+    RCLCPP_INFO(this->get_logger(), "Executing goal");
+    // RCLCPP_INFO(this->get_logger(), "syncCallback......");
     // make sure that the action hasn't been canceled
-    // if(accepted_goal_handle->is_canceling()){
-    //   const auto goal = accepted_goal_handle->get_goal();
+    const auto goal = accepted_goal_handle->get_goal();
+    auto feedback = std::make_shared<AutoDock::Feedback>();
+    auto result = std::make_shared<AutoDock::Result>();
 
-    //   RCLCPP_INFO(this->get_logger(), "Goal accepted:%d", goal->req_state);
-    // }else{
-    //   RCLCPP_INFO(this->get_logger(), "Goal unaccepted");
-    // }
+    if(accepted_goal_handle->is_canceling()){
+      accepted_goal_handle->canceled(result);
+      RCLCPP_INFO(this->get_logger(), "Goal canceled");
+      return;
+    }
+
+    if(goal->req_state == CHARGED && accepted_goal_handle->is_active()){
+
+
+      dock_drive_->update(odom, relative_dock_pose);
+
+      if (dock_drive_->getState() == RobotState::DOCKED_IN) {
+          sleep(1);
+
+          result->res_state = "DOCKED_IN";
+
+          accepted_goal_handle->succeed(result);
+          delete dock_drive_;
+          dock_drive_ = new DockDriver();
+          RCLCPP_INFO(this->get_logger(), "Auto dock is done");
+      }else{
+          feedback->curr_state = dock_drive_->getStateStr();
+          accepted_goal_handle->publish_feedback(feedback);
+          // RCLCPP_INFO(this->get_logger(), "Publish feedback");
+      }
+
+      // RCLCPP_INFO(this->get_logger(), "Goal accepted:%d", goal->req_state);
+    }
+      
+    
   }
 
 private:
@@ -110,44 +138,44 @@ private:
     // this needs to return quickly to avoid blocking the executor, so spin up a new thread
     // std::thread{std::bind(&AutoDockActionServer::execute, this, _1), goal_handle}.detach();
     accepted_goal_handle = goal_handle;
-    // sync_.registerCallback(&AutoDockActionServer::syncCallback, this);
+    sync_.registerCallback(&AutoDockActionServer::syncCallback, this);
   }
 
-  void execute(const std::shared_ptr<GoalHandleAutoDock> goal_handle)
-  {
-    // RCLCPP_INFO(this->get_logger(), "Executing goal");
-    // rclcpp::Rate loop_rate(1);
-    // const auto goal = goal_handle->get_goal();
-    // auto feedback = std::make_shared<Fibonacci::Feedback>();
-    // auto & sequence = feedback->partial_sequence;
-    // sequence.push_back(0);
-    // sequence.push_back(1);
-    // auto result = std::make_shared<Fibonacci::Result>();
+  // void execute(const std::shared_ptr<GoalHandleAutoDock> goal_handle)
+  // {
+  //   RCLCPP_INFO(this->get_logger(), "Executing goal");
+  //   rclcpp::Rate loop_rate(1);
+  //   const auto goal = goal_handle->get_goal();
+  //   auto feedback = std::make_shared<Fibonacci::Feedback>();
+  //   auto & sequence = feedback->partial_sequence;
+  //   sequence.push_back(0);
+  //   sequence.push_back(1);
+  //   auto result = std::make_shared<Fibonacci::Result>();
 
-    // for (int i = 1; (i < goal->order) && rclcpp::ok(); ++i) {
-    //   // Check if there is a cancel request
-    //   if (goal_handle->is_canceling()) {
-    //     result->sequence = sequence;
-    //     goal_handle->canceled(result);
-    //     RCLCPP_INFO(this->get_logger(), "Goal canceled");
-    //     return;
-    //   }
-    //   // Update sequence
-    //   sequence.push_back(sequence[i] + sequence[i - 1]);
-    //   // Publish feedback
-    //   goal_handle->publish_feedback(feedback);
-    //   RCLCPP_INFO(this->get_logger(), "Publish feedback");
+  //   for (int i = 1; (i < goal->order) && rclcpp::ok(); ++i) {
+  //     // Check if there is a cancel request
+  //     if (goal_handle->is_canceling()) {
+  //       result->sequence = sequence;
+  //       goal_handle->canceled(result);
+  //       RCLCPP_INFO(this->get_logger(), "Goal canceled");
+  //       return;
+  //     }
+  //     // Update sequence
+  //     sequence.push_back(sequence[i] + sequence[i - 1]);
+  //     // Publish feedback
+  //     goal_handle->publish_feedback(feedback);
+  //     RCLCPP_INFO(this->get_logger(), "Publish feedback");
 
-    //   loop_rate.sleep();
-    // }
+  //     loop_rate.sleep();
+  //   }
 
-    // // Check if goal is done
-    // if (rclcpp::ok()) {
-    //   result->sequence = sequence;
-    //   goal_handle->succeed(result);
-    //   RCLCPP_INFO(this->get_logger(), "Goal succeeded");
-    // }
-  }
+  //   // Check if goal is done
+  //   if (rclcpp::ok()) {
+  //     result->sequence = sequence;
+  //     goal_handle->succeed(result);
+  //     RCLCPP_INFO(this->get_logger(), "Goal succeeded");
+  //   }
+  // }
 
 
 };  // class AutoDockActionServer
