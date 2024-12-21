@@ -10,7 +10,7 @@ def generate_launch_description():
 
         DeclareLaunchArgument(
         'use_sim_time',
-        default_value='False',
+        default_value='false',
         description='Use simulation (Gazebo) clock if true'),
 
         Node(

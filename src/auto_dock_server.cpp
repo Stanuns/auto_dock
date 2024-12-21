@@ -29,17 +29,20 @@ public:
   using AutoDock = robot_interfaces::action::AutoDock;
   using GoalHandleAutoDock = rclcpp_action::ServerGoalHandle<AutoDock>;
 
+  message_filters::Subscriber<nav_msgs::msg::Odometry> odom_sub_;
+  message_filters::Subscriber<robot_interfaces::msg::DockPoseStamped> relative_dock_pose_sub_;
   typedef message_filters::sync_policies::ApproximateTime<
         nav_msgs::msg::Odometry,
         robot_interfaces::msg::DockPoseStamped
   > SyncPolicy;
   message_filters::Synchronizer<SyncPolicy> sync_;
-  message_filters::Subscriber<nav_msgs::msg::Odometry> odom_sub_;
-  message_filters::Subscriber<robot_interfaces::msg::DockPoseStamped> relative_dock_pose_sub_;
 
+  // AUTO_DOCK_PUBLIC
+  // explicit AutoDockActionServer(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  // : Node("auto_dock_action_server", options),
   AUTO_DOCK_PUBLIC
-  explicit AutoDockActionServer(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
-  : Node("auto_dock_action_server", options),
+  explicit AutoDockActionServer()
+  : Node("auto_dock_action_server"),
   sync_(SyncPolicy(10), odom_sub_, relative_dock_pose_sub_)
   {
     using namespace std::placeholders;
@@ -62,6 +65,18 @@ public:
 
   ~AutoDockActionServer(void){
     delete dock_drive_;
+  }
+
+  void syncCallback(const nav_msgs::msg::Odometry::ConstSharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose){
+    RCLCPP_INFO(this->get_logger(), "syncCallback......");
+    // make sure that the action hasn't been canceled
+    // if(accepted_goal_handle->is_canceling()){
+    //   const auto goal = accepted_goal_handle->get_goal();
+
+    //   RCLCPP_INFO(this->get_logger(), "Goal accepted:%d", goal->req_state);
+    // }else{
+    //   RCLCPP_INFO(this->get_logger(), "Goal unaccepted");
+    // }
   }
 
 private:
@@ -135,21 +150,15 @@ private:
   }
 
 
-  void syncCallback(const nav_msgs::msg::Odometry::ConstSharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose){
-    RCLCPP_INFO(this->get_logger(), "syncCallback......");
-    // make sure that the action hasn't been canceled
-    // if(accepted_goal_handle->is_canceling()){
-    //   const auto goal = accepted_goal_handle->get_goal();
-
-    //   RCLCPP_INFO(this->get_logger(), "Goal accepted:%d", goal->req_state);
-    // }else{
-    //   RCLCPP_INFO(this->get_logger(), "Goal unaccepted");
-    // }
-  }
-
-
 };  // class AutoDockActionServer
 
 }  // namespace auto_dock
 
-RCLCPP_COMPONENTS_REGISTER_NODE(auto_dock::AutoDockActionServer)
+// RCLCPP_COMPONENTS_REGISTER_NODE(auto_dock::AutoDockActionServer)
+int main(int argc, char * argv[])
+{
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<auto_dock::AutoDockActionServer>());
+    rclcpp::shutdown();
+    return 0;
+}
