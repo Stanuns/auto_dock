@@ -75,6 +75,8 @@ private:
     double rotated_; //角度
     double angle_parallel_;
     double angle_align_pos_x_;
+    int to_docking_count_;
+    int to_position_align_count_;
 
     RobotState::State state_;
     std::string state_str_;

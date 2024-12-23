@@ -18,7 +18,9 @@
     void DockDriver::idle(RobotState::State& nstate, double& nvx, double& nwz) {
         dock_pos_detector_ = -2;
         angle_parallel_ = 0;
-        angle_align_pos_x_ = 0.28;
+        angle_align_pos_x_ = 0.23;
+        to_position_align_count_ = 0;
+        to_docking_count_ = 0;
         rotated_ = 0.0;
         nstate = RobotState::SCAN;
         nvx = 0;
@@ -148,10 +150,17 @@
 
         if(RDP_VALID == true && fabs(pos_yaw - angle_parallel_) < 10)
         {
-            next_state = RobotState::POSITION_ALIGN; 
-            next_vx = 0.12;
+            if(to_position_align_count_ > 2){
+                next_state = RobotState::POSITION_ALIGN;
+                to_position_align_count_ = 0;
+            }else{
+                next_state = RobotState::GET_PARALLEL;
+                to_position_align_count_++;
+            }
 
-            //对于wheeltec机器人存在bug，在旋转之后，单独给一个线速度，回有一定旋转，需要给一个反向角速度。
+            next_vx = 0.1;
+
+            //对于wheeltec机器人存在bug，在旋转之后，单独给一个线速度，会有一定旋转，需要给一个反向角速度。
             if(angle_parallel_>0){
                 next_wz = 0.6;
             }else{
@@ -213,11 +222,11 @@
             next_wz = 0.0;
         }else if(RDP_VALID == true && pos_x - angle_align_pos_x_ < -0.05){
             next_state = RobotState::POSITION_ALIGN;
-            next_vx = 0.12; //0.12
+            next_vx = 0.1; //0.12
             next_wz = 0.0;
         }else if(RDP_VALID == true && pos_x - angle_align_pos_x_ > 0.05){
             next_state = RobotState::POSITION_ALIGN;
-            next_vx = -0.12; //-0.12
+            next_vx = -0.1; //-0.12
             next_wz = 0.0;
         }else{
             next_state = RobotState::POSITION_ALIGN;
@@ -245,7 +254,14 @@
 
         if(RDP_VALID == true && fabs(pos_yaw) < 8)
         {
-            next_state = RobotState::DOCKING;
+            if(to_docking_count_ > 2){
+                next_state = RobotState::DOCKING;
+                to_docking_count_ = 0;
+            }else{
+                next_state = RobotState::ANGLE_ALIGN;
+                to_docking_count_++;
+            }
+            
 
             next_vx = 0.1;
 
