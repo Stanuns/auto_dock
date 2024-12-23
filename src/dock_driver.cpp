@@ -4,15 +4,6 @@
  */
 #include "rclcpp/rclcpp.hpp"
 #include "auto_dock/dock_driver.hpp"
-#include "tf2/utils.h"
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/LinearMath/Matrix3x3.h>
-#include <tf2/LinearMath/Transform.h>
-#include <tf2/LinearMath/Vector3.h>
-#include <tf2/impl/convert.h>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #define sign(x) (x>0?+1:x<0?-1:0)
 #define setState(x) {state_=x;}
@@ -48,7 +39,7 @@ void DockDriver::update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_int
     double yaw_update;
     computePoseUpdate(yaw_update, odom);
     updateVelocity(yaw_update, relative_dock_pose);
-    RCLCPP_INFO(this->get_logger(), "cmd update, vx_=%.6f. wz_=%.6f. state_=%s", vx_, wz_, state_str_);
+    RCLCPP_INFO(this->get_logger(), "cmd update, vx_=%.6f. wz_=%.6f. state_=%s", vx_, wz_, state_str_.c_str());
     publishCmd(vx_,wz_);
 }
 
@@ -116,8 +107,17 @@ void DockDriver::computePoseUpdate(double& yaw_update, nav_msgs::msg::Odometry::
         yaw_update = 0;
         odom_priv_ = move(odom);
     }else{
-        double yaw = tf2::getYaw(odom->pose.pose.orientation);
-        yaw_update = tf2::getYaw(odom_priv_->pose.pose.orientation) - yaw;
+        double yaw_current = tf2::getYaw(odom->pose.pose.orientation); //值区间[-180 180]
+        yaw_update = yaw_current - tf2::getYaw(odom_priv_->pose.pose.orientation);
+        yaw_update = yaw_update*180/M_PI;
+
+        //值区间映射到[-180,180]
+        if(yaw_update < -180){ 
+            yaw_update = yaw_update + 360;
+        }else if(yaw_update > 180){
+            yaw_update = yaw_update - 360;
+        }
+
         odom_priv_ = move(odom);
     }
 }

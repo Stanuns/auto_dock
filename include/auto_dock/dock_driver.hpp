@@ -14,6 +14,15 @@
 #include "robot_interfaces/msg/dock_pose_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "tf2/utils.h"
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2/LinearMath/Vector3.h>
+#include <tf2/impl/convert.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 
 #ifndef SRC_DOCK_DRIVE_HPP
@@ -23,6 +32,10 @@
 #define  MIN_ABS_W 0.0
 
 #define  Threshold_RELEVANCE 0.0002
+
+//根据不同的机器人设定
+#define NEXT_VX 0.142
+#define NEXT_WZ 0.316
 
 using namespace std;
 using namespace rclcpp;
@@ -58,8 +71,10 @@ protected:
 private:
     Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_publisher_;
     // Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
-    int dock_detector_;
+    int dock_pos_detector_;
     double rotated_; //角度
+    double angle_parallel_;
+    double angle_align_pos_x_;
 
     RobotState::State state_;
     std::string state_str_;
