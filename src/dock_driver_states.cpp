@@ -153,9 +153,9 @@
 
             //对于wheeltec机器人存在bug，在旋转之后，单独给一个线速度，回有一定旋转，需要给一个反向角速度。
             if(angle_parallel_>0){
-                next_wz = 0.4;
+                next_wz = 0.6;
             }else{
-                next_wz = -0.4;
+                next_wz = -0.6;
             }
             
 
@@ -213,11 +213,11 @@
             next_wz = 0.0;
         }else if(RDP_VALID == true && pos_x - angle_align_pos_x_ < -0.05){
             next_state = RobotState::POSITION_ALIGN;
-            next_vx = 0.12;
+            next_vx = 0.12; //0.12
             next_wz = 0.0;
         }else if(RDP_VALID == true && pos_x - angle_align_pos_x_ > 0.05){
             next_state = RobotState::POSITION_ALIGN;
-            next_vx = -0.12;
+            next_vx = -0.12; //-0.12
             next_wz = 0.0;
         }else{
             next_state = RobotState::POSITION_ALIGN;
@@ -243,16 +243,17 @@
             RDP_VALID = false;
         }
 
-        if(RDP_VALID == true && fabs(pos_yaw) < 5)
+        if(RDP_VALID == true && fabs(pos_yaw) < 8)
         {
             next_state = RobotState::DOCKING;
+
             next_vx = 0.1;
 
             //对于wheeltec机器人存在bug，在旋转之后，单独给一个线速度，回有一定旋转，需要给一个反向角速度。
             if(angle_parallel_>0){
-                next_wz = -0.4;
+                next_wz = -0.6;
             }else{
-                next_wz = 0.4;
+                next_wz = 0.6;
             }
 
 
@@ -261,22 +262,22 @@
         }else if(RDP_VALID == true && angle_parallel_ < 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
-            next_wz = -0.2;
+            next_wz = -0.25;
         }else if(RDP_VALID == true && angle_parallel_ > 0){
+            next_state = RobotState::ANGLE_ALIGN;
+            next_vx = 0.0;
+            next_wz = 0.25;
+        }
+        else if(angle_parallel_ < 0){
+            next_state = RobotState::ANGLE_ALIGN;
+            next_vx = 0.0;
+            next_wz = -0.2;
+
+        }else if(angle_parallel_ > 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
             next_wz = 0.2;
         }
-        // else if(angle_parallel_ < 0){
-        //     next_state = RobotState::ANGLE_ALIGN;
-        //     next_vx = 0.0;
-        //     next_wz = -0.1;
-
-        // }else if(angle_parallel_ > 0){
-        //     next_state = RobotState::ANGLE_ALIGN;
-        //     next_vx = 0.0;
-        //     next_wz = 0.1;
-        // }
         else{
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
@@ -294,7 +295,9 @@
         double next_vx;
         double next_wz;
         double pos_x =  relative_dock_pose->pose.position.x;
+        double pos_y =  relative_dock_pose->pose.position.y;
         double pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
+        RCLCPP_INFO(this->get_logger(), "docking, pos_yaw=%.6f.", pos_yaw);
         double rdp_rele = relative_dock_pose->relevance;
         if(rdp_rele < Threshold_RELEVANCE){
             RDP_VALID = true;
@@ -307,10 +310,18 @@
             next_state = RobotState::DOCKED_IN;
             next_vx = 0.0;
             next_wz = 0.0;
-        }else if(RDP_VALID == true && pos_x < -0.25){
+        }else if(RDP_VALID == true && pos_x < -0.25 && fabs(pos_y) < 0.1){
             next_state = RobotState::DOCKING;
-            next_vx = 1.0;
+            next_vx = 0.1;
             next_wz = 0.0;
+        }else if(RDP_VALID == true && pos_x < -0.25 && pos_y < -0.1){
+            next_state = RobotState::DOCKING;
+            next_vx = 0.1;
+            next_wz = 0.3;
+        }else if(RDP_VALID == true && pos_x < -0.25 && pos_y > 0.1){
+            next_state = RobotState::DOCKING;
+            next_vx = 0.1;
+            next_wz = -0.3;
         }else{
             next_state = RobotState::DOCKING;
             next_vx = 0.0;
