@@ -18,7 +18,7 @@
     void DockDriver::idle(RobotState::State& nstate, double& nvx, double& nwz) {
         dock_pos_detector_ = -2;
         angle_parallel_ = 0;
-        position_align_pos_x_ = -0.05 * LIDAR_INSTALL_ORIENTATION;
+        position_align_pos_x_ = -0.15 * LIDAR_INSTALL_ORIENTATION;
         to_position_align_count_ = 0;
         to_docking_count_ = 0;
         rotated_ = 0.0;
@@ -60,7 +60,7 @@
             next_wz = 0.21;
         }
         // robot is located left side of dock
-        else if(RDP_VALID == true && fabs(pos_yaw) < 5) //机器人正对着dock
+        else if(RDP_VALID == true && fabs(pos_yaw) < 10) //机器人正对着dock
         {
             next_state = RobotState::FIND_DOCK;
             next_vx = 0.0;
@@ -153,6 +153,11 @@
             if(to_position_align_count_ > 2){
                 next_state = RobotState::POSITION_ALIGN;
                 to_position_align_count_ = 0;
+
+                //对于luxsharerobot，当机器人在dock左边时，需要position_align_pos_x_
+                if(dock_pos_detector_ < 0){
+                    position_align_pos_x_ = position_align_pos_x_ * 1.6;
+                }
             }else{
                 next_state = RobotState::GET_PARALLEL;
                 to_position_align_count_++;
@@ -319,20 +324,20 @@
             RDP_VALID = false;
         }
 
-        if(RDP_VALID == true && pos_x > -0.25)
+        if(RDP_VALID == true && pos_x > -0.4)
         {
             next_state = RobotState::DOCKED_IN;
             next_vx = 0.0;
             next_wz = 0.0;
-        }else if(RDP_VALID == true && pos_x < -0.25 && fabs(pos_y) < 0.1){
+        }else if(RDP_VALID == true && pos_x < -0.4 && fabs(pos_y) < 0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = 0.0;
-        }else if(RDP_VALID == true && pos_x < -0.25 && pos_y < -0.1){
+        }else if(RDP_VALID == true && pos_x < -0.4 && pos_y < -0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = 0.3;
-        }else if(RDP_VALID == true && pos_x < -0.25 && pos_y > 0.1){
+        }else if(RDP_VALID == true && pos_x < -0.4 && pos_y > 0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = -0.3;
