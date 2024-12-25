@@ -18,7 +18,7 @@
     void DockDriver::idle(RobotState::State& nstate, double& nvx, double& nwz) {
         dock_pos_detector_ = -2;
         angle_parallel_ = 0;
-        position_align_pos_x_ = 0.23 * LIDAR_INSTALL_ORIENTATION;
+        position_align_pos_x_ = -0.05 * LIDAR_INSTALL_ORIENTATION;
         to_position_align_count_ = 0;
         to_docking_count_ = 0;
         rotated_ = 0.0;
@@ -57,7 +57,7 @@
         {
             next_state = RobotState::SCAN;
             next_vx = 0.0;
-            next_wz = NEXT_WZ;
+            next_wz = 0.21;
         }
         // robot is located left side of dock
         else if(RDP_VALID == true && fabs(pos_yaw) < 5) //机器人正对着dock
@@ -84,7 +84,7 @@
         }else{
             next_state = RobotState::SCAN;
             next_vx = 0.0;
-            next_wz = NEXT_WZ;
+            next_wz = 0.21;
         }
 
         RCLCPP_INFO(this->get_logger(), "scan rotated_= %.6f", rotated_);
@@ -116,12 +116,12 @@
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.0;
-            angle_parallel_ = -90*LIDAR_INSTALL_ORIENTATION;
+            angle_parallel_ = -65*LIDAR_INSTALL_ORIENTATION; //-90 由于luxsharerobot雷达视场角的遮挡，故改为-65
         }else if(dock_pos_detector_ == 1){  //机器人在dock右边
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.0;
-            angle_parallel_ = 90*LIDAR_INSTALL_ORIENTATION;
+            angle_parallel_ = 65*LIDAR_INSTALL_ORIENTATION; //90 由于luxsharerobot雷达视场角的遮挡，故改为65
         }else{
             next_state = RobotState::SCAN;
             next_vx = 0.0;
@@ -257,6 +257,7 @@
             if(to_docking_count_ > 2){
                 next_state = RobotState::DOCKING;
                 to_docking_count_ = 0;
+                angle_parallel_ = 0;
             }else{
                 next_state = RobotState::ANGLE_ALIGN;
                 to_docking_count_++;
@@ -271,10 +272,7 @@
             }else{
                 next_wz = 0.6;
             }
-
-
-
-            angle_parallel_ = 0;
+            
         }else if(RDP_VALID == true && angle_parallel_ < 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
@@ -284,16 +282,16 @@
             next_vx = 0.0;
             next_wz = 0.25;
         }
-        else if(angle_parallel_ < 0){
-            next_state = RobotState::ANGLE_ALIGN;
-            next_vx = 0.0;
-            next_wz = -0.2;
+        // else if(angle_parallel_ < 0){
+        //     next_state = RobotState::ANGLE_ALIGN;
+        //     next_vx = 0.0;
+        //     next_wz = -0.2;
 
-        }else if(angle_parallel_ > 0){
-            next_state = RobotState::ANGLE_ALIGN;
-            next_vx = 0.0;
-            next_wz = 0.2;
-        }
+        // }else if(angle_parallel_ > 0){
+        //     next_state = RobotState::ANGLE_ALIGN;
+        //     next_vx = 0.0;
+        //     next_wz = 0.2;
+        // }
         else{
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;

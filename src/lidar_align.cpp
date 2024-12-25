@@ -32,7 +32,7 @@ Node("lidar_align") {
                         "/relative_dock_pose", 10);
     cross_point.point.z=0;
     thick_dock = 0.037;
-    threshold_rele = 0.00022; //wheeltec:0.0002
+    threshold_rele = 0.00023; //wheeltec:0.0002
 
     node_ = std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node *) {});
     tfB_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
