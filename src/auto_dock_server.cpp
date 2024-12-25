@@ -56,7 +56,7 @@ public:
 
     dock_drive_ = new DockDriver();
 
-    odom_sub_.subscribe(this, "/odom_combined");
+    odom_sub_.subscribe(this, "/odom_org"); //odom_combined
     relative_dock_pose_sub_.subscribe(this, "/relative_dock_pose");
     // sync_.registerCallback(&AutoDockActionServer::syncCallback, this);
 
