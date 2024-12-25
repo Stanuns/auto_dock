@@ -18,7 +18,7 @@
     void DockDriver::idle(RobotState::State& nstate, double& nvx, double& nwz) {
         dock_pos_detector_ = -2;
         angle_parallel_ = 0;
-        angle_align_pos_x_ = 0.23;
+        position_align_pos_x_ = 0.23 * LIDAR_INSTALL_ORIENTATION;
         to_position_align_count_ = 0;
         to_docking_count_ = 0;
         rotated_ = 0.0;
@@ -68,11 +68,11 @@
 
             double pos_y =  relative_dock_pose->pose.position.y;
             if(pos_y < -0.08){
-                dock_pos_detector_ = -1;
+                dock_pos_detector_ = -1*LIDAR_INSTALL_ORIENTATION;
             }else if(fabs(pos_y) <= 0.08){
                 dock_pos_detector_ = 0;
             }else if(pos_y > 0.08){
-                dock_pos_detector_ = 1;
+                dock_pos_detector_ = 1*LIDAR_INSTALL_ORIENTATION;
             }
         }
         else if(fabs(rotated_) > 360+20) { // 转动超过一圈
@@ -116,12 +116,12 @@
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.0;
-            angle_parallel_ = -90;
+            angle_parallel_ = -90*LIDAR_INSTALL_ORIENTATION;
         }else if(dock_pos_detector_ == 1){  //机器人在dock右边
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.0;
-            angle_parallel_ = 90;
+            angle_parallel_ = 90*LIDAR_INSTALL_ORIENTATION;
         }else{
             next_state = RobotState::SCAN;
             next_vx = 0.0;
@@ -162,29 +162,29 @@
 
             //对于wheeltec机器人存在bug，在旋转之后，单独给一个线速度，会有一定旋转，需要给一个反向角速度。
             if(angle_parallel_>0){
-                next_wz = 0.6;
+                next_wz = 0.6*LIDAR_INSTALL_ORIENTATION;
             }else{
-                next_wz = -0.6;
+                next_wz = -0.6*LIDAR_INSTALL_ORIENTATION;
             }
             
 
         }else if(RDP_VALID == true && angle_parallel_ > 0){
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
-            next_wz = -0.2;
+            next_wz = -0.2*LIDAR_INSTALL_ORIENTATION;
         }else if(RDP_VALID == true && angle_parallel_ < 0){
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
-            next_wz = 0.2;
+            next_wz = 0.2*LIDAR_INSTALL_ORIENTATION;
         }
         else if(angle_parallel_ > 0){
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
-            next_wz = -0.2;
+            next_wz = -0.2*LIDAR_INSTALL_ORIENTATION;
         }else if(angle_parallel_ < 0){
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
-            next_wz = 0.2;
+            next_wz = 0.2*LIDAR_INSTALL_ORIENTATION;
         }
         else{
             next_state = RobotState::GET_PARALLEL;
@@ -215,18 +215,18 @@
 
         double pos_x =  relative_dock_pose->pose.position.x;
 
-        if(RDP_VALID == true && fabs(pos_x - angle_align_pos_x_) < 0.05)
+        if(RDP_VALID == true && fabs(pos_x - position_align_pos_x_) < 0.05)
         {
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
             next_wz = 0.0;
-        }else if(RDP_VALID == true && pos_x - angle_align_pos_x_ < -0.05){
+        }else if(RDP_VALID == true && pos_x - position_align_pos_x_ < -0.05){
             next_state = RobotState::POSITION_ALIGN;
-            next_vx = 0.1; //0.12
+            next_vx = 0.1*LIDAR_INSTALL_ORIENTATION; //0.12
             next_wz = 0.0;
-        }else if(RDP_VALID == true && pos_x - angle_align_pos_x_ > 0.05){
+        }else if(RDP_VALID == true && pos_x - position_align_pos_x_ > 0.05){
             next_state = RobotState::POSITION_ALIGN;
-            next_vx = -0.1; //-0.12
+            next_vx = -0.1*LIDAR_INSTALL_ORIENTATION; //-0.12
             next_wz = 0.0;
         }else{
             next_state = RobotState::POSITION_ALIGN;

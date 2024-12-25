@@ -36,6 +36,7 @@
 //根据不同的机器人设定
 #define NEXT_VX 0.142
 #define NEXT_WZ 0.316
+#define LIDAR_INSTALL_ORIENTATION 1; //1:代表激光雷达0角度是朝机器人以内(向后)的方向，-1：代表激光雷达0角度是朝机器人以外(向前)的方向.
 
 using namespace std;
 using namespace rclcpp;
@@ -74,7 +75,7 @@ private:
     int dock_pos_detector_;
     double rotated_; //角度
     double angle_parallel_;
-    double angle_align_pos_x_;
+    double position_align_pos_x_;
     int to_docking_count_;
     int to_position_align_count_;
 

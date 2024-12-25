@@ -32,7 +32,7 @@ Node("lidar_align") {
                         "/relative_dock_pose", 10);
     cross_point.point.z=0;
     thick_dock = 0.037;
-    threshold_rele = 0.0002;
+    threshold_rele = 0.00022; //wheeltec:0.0002
 
     node_ = std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node *) {});
     tfB_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
@@ -58,11 +58,14 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     // RCLCPP_INFO(this->get_logger(), "scan: ranges[185]:%.6f, ranges[186]:%.6f, ranges[187]:%.6f, ranges[188]:%.6f", scan->ranges[185],scan->ranges[186],scan->ranges[187],scan->ranges[188]);
     // RCLCPP_INFO(this->get_logger(), "scan: ranges[189]:%.6f, ranges[190]:%.6f, ranges[191]:%.6f, ranges[192]:%.6f", scan->ranges[189],scan->ranges[190],scan->ranges[191],scan->ranges[192]);
     
+    double scan_range_max = scan->range_max;
+    scan_range_max = 1.5;
+
     //对scan进行过滤, 原因：wheeltec的激光雷达有nan的值
     ranges_filtered.resize(scan_count);
     for(int i = 0; i < scan_count; i++){
         r = scan->ranges[i];
-        if( r > scan->range_max || std::isnan(r) || std::isinf(r)){
+        if( r > scan_range_max || std::isnan(r) || std::isinf(r)){
             ranges_filtered[i] = r_inf;
         }else{
             ranges_filtered[i] = r;
@@ -80,7 +83,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     point_scan = MatrixXf::Zero(2,scan_count);
     for(int i=0; i<scan_count; i++){
         // r = scan->ranges[i];
-        // if(r > scan->range_max || std::isnan(r)){
+        // if(r > scan_range_max || std::isnan(r)){
         //     point_scan(0,i) = r_inf;
         //     point_scan(1,i) = r_inf;
         // }else{
@@ -104,7 +107,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         // r = scan->ranges[i];
         r = ranges_filtered[i];
         theta = scan->angle_min + scan->angle_increment * i + 0.0;
-        if(r > scan->range_max){
+        if(r > scan_range_max){
             continue;
         }
         xs.point.x = r * cos(theta);
@@ -126,7 +129,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
                 theta = scan->angle_min + scan->angle_increment * j + 0.0;
             }
 
-            if(r > scan->range_max){
+            if(r > scan_range_max){
                 continue;
             }
 
@@ -215,7 +218,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         double dd_max = 0;
         for (int n=1;n<count_simul;n++){
             double r_temp = sqrt(pow(point_scan_cut(0,n),2)+pow(point_scan_cut(1,n),2));
-            if(r_temp > scan->range_max){
+            if(r_temp > scan_range_max){
                 continue;
             }
             x1_temp.point.x = point_scan_cut(0,n);
