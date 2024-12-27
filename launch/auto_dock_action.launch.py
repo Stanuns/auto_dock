@@ -6,6 +6,9 @@ from launch.actions import DeclareLaunchArgument
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
 
+    remappings = [('odom', 'odom_combined'),  #luxshare robot odom_org
+                ('relative_dock_pose', 'relative_dock_pose')]
+
     return LaunchDescription([
 
         DeclareLaunchArgument(
@@ -18,6 +21,7 @@ def generate_launch_description():
             executable='auto_dock_action_server', 
             name='auto_dock_action_server',
             output='screen', 
-            parameters=[{'use_sim_time':use_sim_time}]
+            parameters=[{'use_sim_time':use_sim_time}],
+            remappings=remappings
         ),
     ])  

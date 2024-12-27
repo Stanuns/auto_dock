@@ -63,12 +63,14 @@ protected:
     void updateVelocity(double& yaw_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void idle(RobotState::State& state, double& vx, double& wz); //
     void scan(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose, double& yaw_update);
-    void find_dock(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
-    void get_parallel(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
-    void position_align(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
-    void angle_align(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
-    void docking(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
-    void docked_in(RobotState::State& state,double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void find_dock(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void get_parallel(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void position_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void angle_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void docking(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void turn_around(RobotState::State& state, double& vx, double& wz, double& yaw_update);
+    void last_dock(RobotState::State& state, double& vx, double& wz); //有红外传感器, 需增加该传感器信息
+    void docked_in(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
 
 private:
     Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_publisher_;
@@ -79,6 +81,8 @@ private:
     double position_align_pos_x_;
     int to_docking_count_;
     int to_position_align_count_;
+    int docked_in_count_;
+    int to_last_dock_count_;
 
     RobotState::State state_;
     std::string state_str_;

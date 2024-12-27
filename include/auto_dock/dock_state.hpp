@@ -12,6 +12,8 @@ struct RobotState {
         POSITION_ALIGN,
         ANGLE_ALIGN,
         DOCKING,
+        TURN_AROUND, //尾部对接需要
+        LAST_DOCK,   //尾部对接需要
         DOCKED_IN,
     };
 };

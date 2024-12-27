@@ -21,6 +21,8 @@
         position_align_pos_x_ = -0.15 * LIDAR_INSTALL_ORIENTATION;
         to_position_align_count_ = 0;
         to_docking_count_ = 0;
+        docked_in_count_ = 0;
+        to_last_dock_count_ = 0;
         rotated_ = 0.0;
         nstate = RobotState::SCAN;
         nvx = 0;
@@ -74,6 +76,8 @@
             }else if(pos_y > 0.08){
                 dock_pos_detector_ = 1*LIDAR_INSTALL_ORIENTATION;
             }
+
+            rotated_ = 0;
         }
         else if(fabs(rotated_) > 360+20) { // 转动超过一圈
             next_state = RobotState::SCAN;
@@ -93,7 +97,7 @@
         nwz = next_wz;
     }
 
-    void DockDriver::find_dock(RobotState::State& nstate,double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
+    void DockDriver::find_dock(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
     {
         RobotState::State next_state;
         double next_vx;
@@ -133,7 +137,7 @@
         nwz = next_wz;
     }
 
-    void DockDriver::get_parallel(RobotState::State& nstate,double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
+    void DockDriver::get_parallel(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
     {
         RobotState::State next_state;
         double next_vx;
@@ -202,7 +206,7 @@
         nwz = next_wz;
     }
 
-    void DockDriver::position_align(RobotState::State& nstate,double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
+    void DockDriver::position_align(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
     {
         RobotState::State next_state;
         double next_vx;
@@ -244,7 +248,7 @@
         nwz = next_wz;
     }
 
-    void DockDriver::angle_align(RobotState::State& nstate,double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
+    void DockDriver::angle_align(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
     {
         RobotState::State next_state;
         double next_vx;
@@ -308,7 +312,7 @@
         nwz = next_wz;
     }
 
-    void DockDriver::docking(RobotState::State& nstate,double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
+    void DockDriver::docking(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
     {
         RobotState::State next_state;
         double next_vx;
@@ -326,9 +330,11 @@
 
         if(RDP_VALID == true && pos_x > -0.4)
         {
-            next_state = RobotState::DOCKED_IN;
+            next_state = RobotState::TURN_AROUND; //尾部对接需要，如头部对接，直接转到DOCKED_IN
             next_vx = 0.0;
             next_wz = 0.0;
+
+            rotated_ = 0;
         }else if(RDP_VALID == true && pos_x < -0.4 && fabs(pos_y) < 0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
@@ -352,6 +358,70 @@
         nwz = next_wz;
     }
     
+    //尾部对接需要该步骤
+    void DockDriver::turn_around(RobotState::State& nstate, double& nvx, double& nwz, double& yaw_update)
+    {
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        rotated_ += yaw_update;
+
+        if(rotated_ >= 175) //转动一圈
+        {
+
+            if(to_last_dock_count_ > 4){
+                next_state = RobotState::LAST_DOCK;
+                to_last_dock_count_ = 0;
+                rotated_ = 0;
+            }else{
+                next_state = RobotState::TURN_AROUND;
+                to_last_dock_count_++;
+            }
+
+            next_vx = -0.1;
+            next_wz = -0.35;
+        }
+        else{
+            next_state = RobotState::TURN_AROUND;
+            next_vx = 0.0;
+            next_wz = 0.25;
+        }
+
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;
+    }
+
+    //尾部对接需要该步骤，利用红外, 暂时硬件不支持
+    void DockDriver::last_dock(RobotState::State& nstate, double& nvx, double& nwz)
+    {
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        if(docked_in_count_ > 6) 
+        {
+            next_state = RobotState::DOCKED_IN;
+            next_vx = 0.0;
+            next_wz = 0.0;
+
+            docked_in_count_ = 0;
+        }
+        else{
+            next_state = RobotState::LAST_DOCK;
+            next_vx = -0.1;
+            next_wz = 0.0;
+
+            docked_in_count_++;
+        }
+
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;
+    }
+
+
     void DockDriver::docked_in(RobotState::State& nstate,double& nvx, double& nwz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
     {
         RobotState::State next_state;
@@ -364,12 +434,12 @@
             RDP_VALID = false;
         }
 
-        if(RDP_VALID == true)
+        if(RDP_VALID == true) //头部进入充电桩
         {
             next_state = RobotState::DOCKED_IN;
             next_vx = 0.0;
             next_wz = 0.0;
-        }else{
+        }else{  //尾部进入充电桩
             next_state = RobotState::DOCKED_IN;
             next_vx = 0.0;
             next_wz = 0.0;

@@ -14,7 +14,7 @@ DockDriver::DockDriver() :
         ,state_(RobotState::IDLE)
         ,state_str_("IDLE")
         ,vx_(0.0), wz_(0.0)
-        ,ROBOT_STATE_STR(8)
+        ,ROBOT_STATE_STR(10)
         ,RDP_VALID(false)
 {
     cmd_publisher_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
@@ -25,7 +25,9 @@ DockDriver::DockDriver() :
     ROBOT_STATE_STR[4] = "POSITION_ALIGN";
     ROBOT_STATE_STR[5] = "ANGLE_ALIGN";
     ROBOT_STATE_STR[6] = "DOCKING";
-    ROBOT_STATE_STR[7] = "DOCKED_IN";
+    ROBOT_STATE_STR[7] = "TURN_AROUND";
+    ROBOT_STATE_STR[8] = "LAST_DOCK";
+    ROBOT_STATE_STR[9] = "DOCKED_IN";
 
     IfFirstTime = true;
 }
@@ -72,6 +74,12 @@ void DockDriver::updateVelocity(double& yaw_update, const robot_interfaces::msg:
             break;
         case RobotState::DOCKING:
             docking(new_state, new_vx, new_wz, relative_dock_pose);
+            break;
+        case RobotState::TURN_AROUND:
+            turn_around(new_state, new_vx, new_wz, yaw_update);
+            break;
+        case RobotState::LAST_DOCK:
+            last_dock(new_state, new_vx, new_wz);
             break;
         case RobotState::DOCKED_IN:
             docked_in(new_state, new_vx, new_wz, relative_dock_pose);
