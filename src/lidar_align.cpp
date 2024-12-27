@@ -32,7 +32,6 @@ Node("lidar_align") {
                         "/relative_dock_pose", 10);
     cross_point.point.z=0;
     thick_dock = 0.037;
-    threshold_rele = 0.00023; //wheeltec:0.0002
 
     node_ = std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node *) {});
     tfB_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
@@ -263,7 +262,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     double min_value = rele.minCoeff(&minRow,&minCol);
     //debug
     RCLCPP_INFO(this->get_logger(),"rele_min_value:%.6f", min_value);
-    if(min_value > threshold_rele){
+    if(min_value > THRESHOLD_RELEVANCE){
 
         dock_center_pose.header.stamp = this->get_clock()->now();
         dock_center_pose.header.frame_id = "dock_link";

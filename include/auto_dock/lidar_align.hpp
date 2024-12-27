@@ -11,6 +11,7 @@
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/transform_broadcaster.h"
 #include "robot_interfaces/msg/dock_pose_stamped.hpp"
+#include "auto_dock/dock_driver.hpp"
 
 #ifndef SRC_LIDAR_ALIGN_HPP
 #define SRC_LIDAR_ALIGN_HPP
@@ -69,7 +70,6 @@ private:
     std::shared_ptr<tf2_ros::TransformBroadcaster> tfB_;
     rclcpp::Node::SharedPtr node_;
     double thick_dock;
-    double threshold_rele;
 
 
 };

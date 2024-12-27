@@ -31,7 +31,7 @@
 #define  MIN_ABS_V  0.0
 #define  MIN_ABS_W 0.0
 
-#define  Threshold_RELEVANCE 0.0002
+#define  THRESHOLD_RELEVANCE 0.00023 //wheeltec:0.0002  luxshare:0.00023
 
 //根据不同的机器人设定
 #define NEXT_VX 0.142

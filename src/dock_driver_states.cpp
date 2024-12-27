@@ -18,7 +18,7 @@
     void DockDriver::idle(RobotState::State& nstate, double& nvx, double& nwz) {
         dock_pos_detector_ = -2;
         angle_parallel_ = 0;
-        position_align_pos_x_ = -0.15 * LIDAR_INSTALL_ORIENTATION;
+        position_align_pos_x_ = -0.05 * LIDAR_INSTALL_ORIENTATION; //luxshare: -0.15; wheeltec:0.05
         to_position_align_count_ = 0;
         to_docking_count_ = 0;
         docked_in_count_ = 0;
@@ -47,7 +47,7 @@
         double rdp_rele = relative_dock_pose->relevance;
         double pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
 
-        if(rdp_rele < Threshold_RELEVANCE){
+        if(rdp_rele < THRESHOLD_RELEVANCE){
             RDP_VALID = true;
         }else{
             RDP_VALID = false;
@@ -55,25 +55,18 @@
 
         rotated_ += yaw_update;
 
-        if(RDP_VALID == false)
-        {
-            next_state = RobotState::SCAN;
-            next_vx = 0.0;
-            next_wz = 0.21;
-        }
-        // robot is located left side of dock
-        else if(RDP_VALID == true && fabs(pos_yaw) < 10) //机器人正对着dock
+        if(RDP_VALID == true && fabs(pos_yaw) < 10) //机器人正对着dock
         {
             next_state = RobotState::FIND_DOCK;
             next_vx = 0.0;
             next_wz = 0.0;
 
             double pos_y =  relative_dock_pose->pose.position.y;
-            if(pos_y < -0.08){
+            if(pos_y < -0.05){
                 dock_pos_detector_ = -1*LIDAR_INSTALL_ORIENTATION;
-            }else if(fabs(pos_y) <= 0.08){
+            }else if(fabs(pos_y) <= 0.05){
                 dock_pos_detector_ = 0;
-            }else if(pos_y > 0.08){
+            }else if(pos_y > 0.05){
                 dock_pos_detector_ = 1*LIDAR_INSTALL_ORIENTATION;
             }
 
@@ -106,7 +99,7 @@
 
         double pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;//值区间[-180 180]
 
-        if(rdp_rele < Threshold_RELEVANCE){
+        if(rdp_rele < THRESHOLD_RELEVANCE){
             RDP_VALID = true;
         }else{
             RDP_VALID = false;
@@ -146,7 +139,7 @@
 
         double pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
 
-        if(rdp_rele < Threshold_RELEVANCE){
+        if(rdp_rele < THRESHOLD_RELEVANCE){
             RDP_VALID = true;
         }else{
             RDP_VALID = false;
@@ -169,28 +162,28 @@
 
             next_vx = 0.1;
 
-            //对于wheeltec机器人存在bug，在旋转之后，单独给一个线速度，会有一定旋转，需要给一个反向角速度。
-            if(angle_parallel_>0){
-                next_wz = 0.6*LIDAR_INSTALL_ORIENTATION;
-            }else{
+            //对于wheeltec, luxshare机器人存在bug，在旋转之后，单独给一个线速度，会有一定旋转，需要给一个反向角速度。
+            if(dock_pos_detector_ < 0){
                 next_wz = -0.6*LIDAR_INSTALL_ORIENTATION;
+            }else{
+                next_wz = 0.6*LIDAR_INSTALL_ORIENTATION;
             }
             
 
-        }else if(RDP_VALID == true && angle_parallel_ > 0){
+        }else if(RDP_VALID == true && dock_pos_detector_ > 0){
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = -0.2*LIDAR_INSTALL_ORIENTATION;
-        }else if(RDP_VALID == true && angle_parallel_ < 0){
+        }else if(RDP_VALID == true && dock_pos_detector_ < 0){
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.2*LIDAR_INSTALL_ORIENTATION;
         }
-        else if(angle_parallel_ > 0){
+        else if(dock_pos_detector_ > 0){
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = -0.2*LIDAR_INSTALL_ORIENTATION;
-        }else if(angle_parallel_ < 0){
+        }else if(dock_pos_detector_ < 0){
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.2*LIDAR_INSTALL_ORIENTATION;
@@ -216,7 +209,7 @@
         RCLCPP_INFO(this->get_logger(), "position_align, pos_yaw=%.6f.", pos_yaw);
 
         double rdp_rele = relative_dock_pose->relevance;
-        if(rdp_rele < Threshold_RELEVANCE){
+        if(rdp_rele < THRESHOLD_RELEVANCE){
             RDP_VALID = true;
         }else{
             RDP_VALID = false;
@@ -255,7 +248,7 @@
         double next_wz;
         double rdp_rele = relative_dock_pose->relevance;
         double pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
-        if(rdp_rele < Threshold_RELEVANCE){
+        if(rdp_rele < THRESHOLD_RELEVANCE){
             RDP_VALID = true;
         }else{
             RDP_VALID = false;
@@ -263,7 +256,7 @@
 
         if(RDP_VALID == true && fabs(pos_yaw) < 8)
         {
-            if(to_docking_count_ > 2){
+            if(to_docking_count_ > 3){
                 next_state = RobotState::DOCKING;
                 to_docking_count_ = 0;
                 angle_parallel_ = 0;
@@ -276,35 +269,37 @@
             next_vx = 0.1;
 
             //对于wheeltec机器人存在bug，在旋转之后，单独给一个线速度，会有一定旋转，需要给一个反向角速度。
-            if(angle_parallel_>0){
+            if(dock_pos_detector_>0){
                 next_wz = -0.6;
-            }else{
+            }else if(dock_pos_detector_<0){
                 next_wz = 0.6;
+            }else{
+                next_wz = -0.6; //直接从SCAN->FIND_DOCK->ANGLE_ALIGN
             }
             
-        }else if(RDP_VALID == true && angle_parallel_ < 0){
+        }else if(RDP_VALID == true && dock_pos_detector_ < 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
             next_wz = -0.25;
-        }else if(RDP_VALID == true && angle_parallel_ > 0){
+        }else if(RDP_VALID == true && dock_pos_detector_ > 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
             next_wz = 0.25;
         }
-        // else if(angle_parallel_ < 0){
+        // else if(dock_pos_detector_ < 0){
         //     next_state = RobotState::ANGLE_ALIGN;
         //     next_vx = 0.0;
-        //     next_wz = -0.2;
+        //     next_wz = -0.18;
 
-        // }else if(angle_parallel_ > 0){
+        // }else if(dock_pos_detector_ > 0){
         //     next_state = RobotState::ANGLE_ALIGN;
         //     next_vx = 0.0;
-        //     next_wz = 0.2;
+        //     next_wz = 0.18;
         // }
         else{
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
-            next_wz = 0.0;
+            next_wz = 0.25;
         }
 
         nstate = next_state;
@@ -322,7 +317,7 @@
         double pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
         RCLCPP_INFO(this->get_logger(), "docking, pos_yaw=%.6f.", pos_yaw);
         double rdp_rele = relative_dock_pose->relevance;
-        if(rdp_rele < Threshold_RELEVANCE){
+        if(rdp_rele < THRESHOLD_RELEVANCE){
             RDP_VALID = true;
         }else{
             RDP_VALID = false;
@@ -380,7 +375,7 @@
             }
 
             next_vx = -0.1;
-            next_wz = -0.35;
+            next_wz = -0.6;
         }
         else{
             next_state = RobotState::TURN_AROUND;
@@ -400,7 +395,7 @@
         double next_vx;
         double next_wz;
 
-        if(docked_in_count_ > 6) 
+        if(docked_in_count_ > 10) 
         {
             next_state = RobotState::DOCKED_IN;
             next_vx = 0.0;
@@ -428,7 +423,7 @@
         double next_vx;
         double next_wz;
         double rdp_rele = relative_dock_pose->relevance;
-        if(rdp_rele < Threshold_RELEVANCE){
+        if(rdp_rele < THRESHOLD_RELEVANCE){
             RDP_VALID = true;
         }else{
             RDP_VALID = false;
