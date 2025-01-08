@@ -18,7 +18,7 @@
     void DockDriver::idle(RobotState::State& nstate, double& nvx, double& nwz) {
         dock_pos_detector_ = -2;
         angle_parallel_ = 0;
-        position_align_pos_x_ = -0.05 * LIDAR_INSTALL_ORIENTATION; //luxshare: -0.15; wheeltec:0.05
+        position_align_pos_x_ = -0.00 * LIDAR_INSTALL_ORIENTATION; //luxshare: -0.15; wheeltec:0.00
         to_position_align_count_ = 0;
         to_docking_count_ = 0;
         docked_in_count_ = 0;
