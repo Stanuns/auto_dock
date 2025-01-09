@@ -254,6 +254,8 @@
             RDP_VALID = false;
         }
 
+        RCLCPP_INFO(this->get_logger(), "angle_align------>dock_pos_detector_=%d.", dock_pos_detector_);
+
         if(RDP_VALID == true && fabs(pos_yaw) < 8)
         {
             if(to_docking_count_ > 3){

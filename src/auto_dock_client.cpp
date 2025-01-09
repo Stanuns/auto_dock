@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <sstream>
+#include <iostream>
 
 #include "robot_interfaces/action/auto_dock.hpp"
 
@@ -10,6 +11,8 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
 #include "auto_dock/auto_dock_server.hpp"
+
+using namespace std;
 
 namespace auto_dock
 {
@@ -29,6 +32,7 @@ public:
     // this->timer_ = this->create_wall_timer(
     //   std::chrono::milliseconds(500),
     //   std::bind(&AutoDockActionClient::send_goal, this));
+    RCLCPP_INFO(this->get_logger(), "AutoDockActionClient initialize done......");
     send_goal();
   }
 

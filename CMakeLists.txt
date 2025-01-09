@@ -102,21 +102,21 @@ install(TARGETS auto_dock_action_server
     DESTINATION lib/${PROJECT_NAME}
 )
 
-add_library(action_client SHARED
+add_library(dock_action_client SHARED #if use 'action_client', ‘ros2 run auto_dock auto_dock_action_client’ cannot run successfully.
   src/auto_dock_client.cpp)
-target_include_directories(action_client PRIVATE
+target_include_directories(dock_action_client PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_definitions(action_client
-  PRIVATE "ACTION_TUTORIALS_CPP_BUILDING_DLL")
-ament_target_dependencies(action_client
+target_compile_definitions(dock_action_client
+  PRIVATE "AUTO_DOCK_BUILDING_DLL")
+ament_target_dependencies(dock_action_client
   "robot_interfaces"
   "rclcpp"
   "rclcpp_action"
   "rclcpp_components")
-rclcpp_components_register_node(action_client PLUGIN "auto_dock::AutoDockActionClient" EXECUTABLE auto_dock_action_client)
+rclcpp_components_register_node(dock_action_client PLUGIN "auto_dock::AutoDockActionClient" EXECUTABLE auto_dock_action_client)
 install(TARGETS
-  action_client
+  dock_action_client
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
