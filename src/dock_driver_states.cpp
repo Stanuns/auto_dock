@@ -288,21 +288,21 @@
             next_vx = 0.0;
             next_wz = 0.25;
         }
-        // else if(dock_pos_detector_ < 0){
-        //     next_state = RobotState::ANGLE_ALIGN;
-        //     next_vx = 0.0;
-        //     next_wz = -0.18;
+        else if(dock_pos_detector_ < 0){
+            next_state = RobotState::ANGLE_ALIGN;
+            next_vx = 0.0;
+            next_wz = -0.25;
 
-        // }else if(dock_pos_detector_ > 0){
-        //     next_state = RobotState::ANGLE_ALIGN;
-        //     next_vx = 0.0;
-        //     next_wz = 0.18;
-        // }
-        else{
+        }else if(dock_pos_detector_ > 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
             next_wz = 0.25;
         }
+        // else{
+        //     next_state = RobotState::ANGLE_ALIGN;
+        //     next_vx = 0.0;
+        //     next_wz = 0.25;
+        // }
 
         nstate = next_state;
         nvx = next_vx;
@@ -397,7 +397,7 @@
         double next_vx;
         double next_wz;
 
-        if(docked_in_count_ > 10) 
+        if(docked_in_count_ > 25) 
         {
             next_state = RobotState::DOCKED_IN;
             next_vx = 0.0;
