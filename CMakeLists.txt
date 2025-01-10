@@ -14,6 +14,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(Eigen3 3.3 REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(nav2_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -99,6 +100,26 @@ ament_target_dependencies(auto_dock_action_server
   tf2_geometry_msgs
 )
 install(TARGETS auto_dock_action_server
+    DESTINATION lib/${PROJECT_NAME}
+)
+
+include_directories(include)
+add_executable(remote_auto_dock src/remote_auto_dock.cpp)
+ament_target_dependencies(remote_auto_dock
+  robot_interfaces
+  rclcpp
+  rclcpp_action
+  rclcpp_components
+  message_filters
+  nav_msgs
+  geometry_msgs
+  sensor_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+  nav2_msgs
+)
+install(TARGETS remote_auto_dock
     DESTINATION lib/${PROJECT_NAME}
 )
 
