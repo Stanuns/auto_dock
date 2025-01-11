@@ -103,7 +103,6 @@ install(TARGETS auto_dock_action_server
     DESTINATION lib/${PROJECT_NAME}
 )
 
-include_directories(include)
 add_executable(remote_auto_dock src/remote_auto_dock.cpp)
 ament_target_dependencies(remote_auto_dock
   robot_interfaces
