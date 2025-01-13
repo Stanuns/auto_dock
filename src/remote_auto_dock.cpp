@@ -35,8 +35,10 @@ public:
     using AutoDock = robot_interfaces::action::AutoDock;
     using GoalHandleAutoDock = rclcpp_action::ClientGoalHandle<AutoDock>;
 
-  RemoteAutoDock()
-  : Node("remote_auto_dock")
+  RemoteAutoDock(): 
+  Node("remote_auto_dock"),
+  send_goal_thread_1(nullptr),
+  send_goal_thread_2(nullptr)
   {
     this->nav2_client_ptr_ = rclcpp_action::create_client<NavigateToPose>(
       this,
@@ -45,7 +47,26 @@ public:
       this,
       "auto_dock");
 
-    nav2_send_goal();
+    RCLCPP_INFO(this->get_logger(), "before nav2_send_goal dock_send_goal");
+    // std::bind(&RemoteAutoDock::nav2_send_goal, this);
+    // std::bind(&RemoteAutoDock::dock_send_goal, this);
+    // nav2_send_goal();
+    // dock_send_goal();
+    send_goal_thread_1 = std::make_shared<std::thread>
+        (std::bind(&RemoteAutoDock::nav2_send_goal, this));
+    send_goal_thread_2 = std::make_shared<std::thread>
+        (std::bind(&RemoteAutoDock::dock_send_goal, this));
+    RCLCPP_INFO(this->get_logger(), "after nav2_send_goal dock_send_goal");
+  }
+
+  ~RemoteAutoDock(){
+    if(send_goal_thread_1){
+        send_goal_thread_1->join();
+    }
+
+    if(send_goal_thread_2){
+        send_goal_thread_2->join();
+    }
   }
 
   void nav2_send_goal()
@@ -73,10 +94,16 @@ public:
     send_goal_options.result_callback =
       std::bind(&RemoteAutoDock::nav2_result_callback, this, _1);
     this->nav2_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+    // RCLCPP_INFO(this->get_logger(), "navigation2 Sent goal");
   }
 
   void dock_send_goal()
   {
+    while(!IsNearDock){
+      sleep(1);
+      RCLCPP_INFO(this->get_logger(), "dock_send_goal IsNearDock = %d",IsNearDock);
+    }
+
     using namespace std::placeholders;
 
     // this->timer_->cancel();
@@ -104,7 +131,9 @@ public:
 private:
   rclcpp_action::Client<NavigateToPose>::SharedPtr nav2_client_ptr_;
   rclcpp_action::Client<AutoDock>::SharedPtr dock_client_ptr_;
-//   bool IsNearDock = false;
+  bool IsNearDock = false;
+  std::shared_ptr<std::thread> send_goal_thread_1;
+  std::shared_ptr<std::thread> send_goal_thread_2;
 
   //navigation2
   void nav2_goal_response_callback(const GoalHandleNavigateToPose::SharedPtr & goal_handle)
@@ -129,10 +158,10 @@ private:
       case rclcpp_action::ResultCode::SUCCEEDED:
         RCLCPP_INFO(get_logger(), "Navigation2 Goal reached");
 
-        dock_send_goal();
-        // IsNearDock = true;
-        // break;
-        return;
+        // dock_send_goal();
+        IsNearDock = true;
+        break;
+        // return;
       case rclcpp_action::ResultCode::ABORTED:
         RCLCPP_ERROR(this->get_logger(), "Navigation2 Goal was aborted");
         return;
@@ -144,6 +173,7 @@ private:
         return;
     }
     // rclcpp::shutdown();
+    RCLCPP_INFO(this->get_logger(), "Navigation2 nav2_result_callback is done");
   }
 
   //auto dock
@@ -180,6 +210,7 @@ private:
         RCLCPP_ERROR(this->get_logger(), "Unknown result code");
         return;
     }
+    IsNearDock = false;
     std::stringstream ss;
     // ss << "Result received: ";
     // for (auto number : result.result->sequence) {
