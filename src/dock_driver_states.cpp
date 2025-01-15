@@ -397,7 +397,7 @@
         double next_vx;
         double next_wz;
 
-        if(docked_in_count_ > 25) 
+        if(docked_in_count_ > 40) 
         {
             next_state = RobotState::DOCKED_IN;
             next_vx = 0.0;

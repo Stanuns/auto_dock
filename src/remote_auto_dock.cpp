@@ -60,13 +60,17 @@ public:
   }
 
   ~RemoteAutoDock(){
+    // RCLCPP_INFO(this->get_logger(), "~RemoteAutoDock()");
     if(send_goal_thread_1){
         send_goal_thread_1->join();
+        // send_goal_thread_1.reset();
     }
 
     if(send_goal_thread_2){
         send_goal_thread_2->join();
+        // send_goal_thread_2.reset();
     }
+
   }
 
   void nav2_send_goal()
