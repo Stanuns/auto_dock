@@ -151,7 +151,7 @@
                 next_state = RobotState::POSITION_ALIGN;
                 to_position_align_count_ = 0;
 
-                //对于luxsharerobot，当机器人在dock左边时，需要position_align_pos_x_
+                //对于luxsharerobot，当机器人在dock左边时，需要position_align_pos_x_*1.6
                 if(dock_pos_detector_ < 0){
                     position_align_pos_x_ = position_align_pos_x_ * 1.6;
                 }
