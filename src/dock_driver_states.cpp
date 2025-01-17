@@ -18,7 +18,7 @@
     void DockDriver::idle(RobotState::State& nstate, double& nvx, double& nwz) {
         dock_pos_detector_ = -2;
         angle_parallel_ = 0;
-        position_align_pos_x_ = -0.00 * LIDAR_INSTALL_ORIENTATION; //luxshare: -0.15; wheeltec:0.00
+        position_align_pos_x_ = -0.15 * LIDAR_INSTALL_ORIENTATION; //luxshare: -0.20; wheeltec:0.00
         to_position_align_count_ = 0;
         to_docking_count_ = 0;
         docked_in_count_ = 0;
@@ -113,12 +113,12 @@
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.0;
-            angle_parallel_ = -65*LIDAR_INSTALL_ORIENTATION; //-90 由于luxsharerobot雷达视场角的遮挡，故改为-65
+            angle_parallel_ = -75*LIDAR_INSTALL_ORIENTATION; //-90 由于luxsharerobot雷达视场角的遮挡，故改为-65
         }else if(dock_pos_detector_ == 1){  //机器人在dock右边
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.0;
-            angle_parallel_ = 65*LIDAR_INSTALL_ORIENTATION; //90 由于luxsharerobot雷达视场角的遮挡，故改为65
+            angle_parallel_ = 75*LIDAR_INSTALL_ORIENTATION; //90 由于luxsharerobot雷达视场角的遮挡，故改为65
         }else{
             next_state = RobotState::SCAN;
             next_vx = 0.0;
@@ -153,7 +153,7 @@
 
                 //对于luxsharerobot，当机器人在dock左边时，需要position_align_pos_x_*1.6
                 if(dock_pos_detector_ < 0){
-                    position_align_pos_x_ = position_align_pos_x_ * 1.6;
+                    position_align_pos_x_ = position_align_pos_x_;
                 }
             }else{
                 next_state = RobotState::GET_PARALLEL;
@@ -206,8 +206,6 @@
         double next_wz;
         double pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
 
-        RCLCPP_INFO(this->get_logger(), "position_align, pos_yaw=%.6f.", pos_yaw);
-
         double rdp_rele = relative_dock_pose->relevance;
         if(rdp_rele < THRESHOLD_RELEVANCE){
             RDP_VALID = true;
@@ -217,16 +215,17 @@
 
         double pos_x =  relative_dock_pose->pose.position.x;
 
-        if(RDP_VALID == true && fabs(pos_x - position_align_pos_x_) < 0.05)
+        RCLCPP_INFO(this->get_logger(), "position_align, pos_x=%.6f, position_align_pos_x_=%.6f.", pos_x, position_align_pos_x_);
+        if(RDP_VALID == true && fabs(pos_x - position_align_pos_x_) <= 0.04)
         {
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
             next_wz = 0.0;
-        }else if(RDP_VALID == true && pos_x - position_align_pos_x_ < -0.05){
+        }else if(RDP_VALID == true && pos_x - position_align_pos_x_ < -0.04){
             next_state = RobotState::POSITION_ALIGN;
             next_vx = 0.1*LIDAR_INSTALL_ORIENTATION; //0.12
             next_wz = 0.0;
-        }else if(RDP_VALID == true && pos_x - position_align_pos_x_ > 0.05){
+        }else if(RDP_VALID == true && pos_x - position_align_pos_x_ > 0.04){
             next_state = RobotState::POSITION_ALIGN;
             next_vx = -0.1*LIDAR_INSTALL_ORIENTATION; //-0.12
             next_wz = 0.0;
@@ -256,9 +255,9 @@
 
         RCLCPP_INFO(this->get_logger(), "angle_align------>dock_pos_detector_=%d.", dock_pos_detector_);
 
-        if(RDP_VALID == true && fabs(pos_yaw) < 8)
+        if(RDP_VALID == true && fabs(pos_yaw) < 10)
         {
-            if(to_docking_count_ > 3){
+            if(to_docking_count_ >= 1){
                 next_state = RobotState::DOCKING;
                 to_docking_count_ = 0;
                 angle_parallel_ = 0;
@@ -282,26 +281,26 @@
         }else if(RDP_VALID == true && dock_pos_detector_ < 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
-            next_wz = -0.25;
+            next_wz = -0.2;
         }else if(RDP_VALID == true && dock_pos_detector_ > 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
-            next_wz = 0.25;
+            next_wz = 0.2;
         }
         else if(dock_pos_detector_ < 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
-            next_wz = -0.25;
+            next_wz = -0.2;
 
         }else if(dock_pos_detector_ > 0){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
-            next_wz = 0.25;
+            next_wz = 0.2;
         }
         // else{
         //     next_state = RobotState::ANGLE_ALIGN;
         //     next_vx = 0.0;
-        //     next_wz = 0.25;
+        //     next_wz = 0.2;
         // }
 
         nstate = next_state;
@@ -325,22 +324,22 @@
             RDP_VALID = false;
         }
 
-        if(RDP_VALID == true && pos_x > -0.4)
+        if(RDP_VALID == true && pos_x > -0.76)
         {
             next_state = RobotState::TURN_AROUND; //尾部对接需要，如头部对接，直接转到DOCKED_IN
             next_vx = 0.0;
             next_wz = 0.0;
 
             rotated_ = 0;
-        }else if(RDP_VALID == true && pos_x < -0.4 && fabs(pos_y) < 0.1){
+        }else if(RDP_VALID == true && pos_x < -0.76 && fabs(pos_y) < 0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = 0.0;
-        }else if(RDP_VALID == true && pos_x < -0.4 && pos_y < -0.1){
+        }else if(RDP_VALID == true && pos_x < -0.76 && pos_y < -0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = 0.3;
-        }else if(RDP_VALID == true && pos_x < -0.4 && pos_y > 0.1){
+        }else if(RDP_VALID == true && pos_x < -0.76 && pos_y > 0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = -0.3;
@@ -376,13 +375,13 @@
                 to_last_dock_count_++;
             }
 
-            next_vx = -0.1;
-            next_wz = -0.6;
+            next_vx = 0.0;
+            next_wz = -0.3;
         }
         else{
             next_state = RobotState::TURN_AROUND;
             next_vx = 0.0;
-            next_wz = 0.25;
+            next_wz = 0.2;
         }
 
         nstate = next_state;

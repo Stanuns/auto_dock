@@ -6,6 +6,7 @@
  * 1）以Lidar当前位姿为坐标原点（0.0.0）（需要利用tf转换到机器人本体坐标系中的坐标）
  * 2) 以Lidar的0角度为x轴正方向 逆时针旋转pi/2角度为y轴正方向: 
  * wheeltec：Lidar 0角度是往自身正中心方向（往内），逆时针旋转为正方向
+ * Luxshare: Lidar 0角度是往自身正中心方向（往内），逆时针旋转为正方向
  * 3）随着rplidar的角度增大（0 ～ 2×pi），在坐标轴上的表现是一个逆时针的过程
  * 将该数据发布到topic    /relative_dock_pose
  * **/
@@ -163,7 +164,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         ray_x1.point.x = 0;
         ray_x1.point.y = 0;
         ray_x1.point.z = 0;
-        for (int k = i+1; k < i+count_simul; k++){
+        for (int k = i; k < i+count_simul; k++){
             if(k >= scan_count){
                 // r = scan->ranges[k-scan_count];
                 r = ranges_filtered[k-scan_count];
@@ -203,9 +204,11 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
                 index_scan(k-i) = k;
             }
 
+            //debug
+            //RCLCPP_INFO(this->get_logger(), "scan_count:%d, count_simul:%d, point_simul[%d]:%.6f,%.6f", scan_count, count_simul, k, point_simul(0,k-i),point_simul(1,k-i));
 
         }
-
+        // RCLCPP_INFO(this->get_logger(), "---------------");
         point_scan_cut = MatrixXf::Zero(2,count_simul);
         for (int m=0; m<count_simul; m++){
             point_scan_cut.col(m) = point_scan.col(index_scan(m));
@@ -261,7 +264,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     VectorXf::Index minRow,minCol;
     double min_value = rele.minCoeff(&minRow,&minCol);
     //debug
-    RCLCPP_INFO(this->get_logger(),"rele_min_value:%.6f", min_value);
+    // RCLCPP_INFO(this->get_logger(),"rele_min_value:%.6f", min_value);
     if(min_value > THRESHOLD_RELEVANCE){
 
         dock_center_pose.header.stamp = this->get_clock()->now();
@@ -277,19 +280,26 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
         dock_center_pose.relevance = min_value;
         
     }else{
+
         //求dock在lidar坐标系下的位置
         // r = scan->ranges[minRow];
         r = ranges_filtered[minRow];
         theta = scan->angle_min + scan->angle_increment * minRow + 0.0;
+        double theta_s_log = theta*180/M_PI ;
         dock_key1_start.point.x = r*cos(theta);
         dock_key1_start.point.y = r*sin(theta);
         dock_key1_start.point.z = 0;
         // r = scan->ranges[index_end(minRow)];
         r = ranges_filtered[index_end(minRow)];
         theta = scan->angle_min + scan->angle_increment * index_end(minRow) + 0.0;
+        double theta_e_log = theta*180/M_PI ;
         dock_key4_end.point.x = r*cos(theta);
         dock_key4_end.point.y = r*sin(theta);
         dock_key4_end.point.z = 0;
+
+        //debug 
+        RCLCPP_INFO(this->get_logger(),"minRow:%d, rele_min_value:%.6f, range_s:%.6f, range_e:%.6f, index_end(minRow):%d, theta_s:%.6f, theta_e:%.6f", 
+                    minRow, min_value, ranges_filtered[minRow], ranges_filtered[index_end(minRow)], index_end(minRow), theta_s_log, theta_e_log);
 
         /**
          * 将lidar坐标系下的坐标转换成机器人本体的坐标

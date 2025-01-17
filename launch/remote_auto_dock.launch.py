@@ -6,7 +6,7 @@ from launch.actions import DeclareLaunchArgument
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
 
-    remappings = [('odom', 'odom_combined'),  #luxshare robot odom_org
+    remappings = [('odom', 'odom_combined'),  #luxshare robot odom_combined
                 ('relative_dock_pose', 'relative_dock_pose')]
 
     return LaunchDescription([
