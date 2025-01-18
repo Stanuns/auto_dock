@@ -249,7 +249,7 @@
         double next_vx;
         double next_wz;
         
-        if(count_pae_ > 20){
+        if(count_pae_ > 25){
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
             next_wz = 0.0;
@@ -401,7 +401,7 @@
 
         rotated_ += yaw_update;
 
-        if(rotated_ >= 175) //转动一圈
+        if(rotated_ >= 183) //转动一圈
         {
 
             if(to_last_dock_count_ > 4){
