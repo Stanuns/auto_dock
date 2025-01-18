@@ -362,22 +362,22 @@
             RDP_VALID = false;
         }
 
-        if(RDP_VALID == true && pos_x > -0.76)
+        if(RDP_VALID == true && pos_x > -0.9)
         {
             next_state = RobotState::TURN_AROUND; //尾部对接需要，如头部对接，直接转到DOCKED_IN
             next_vx = 0.0;
             next_wz = 0.0;
 
             rotated_ = 0;
-        }else if(RDP_VALID == true && pos_x < -0.76 && fabs(pos_y) < 0.1){
+        }else if(RDP_VALID == true && pos_x < -0.9 && fabs(pos_y) < 0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = 0.0;
-        }else if(RDP_VALID == true && pos_x < -0.76 && pos_y < -0.1){
+        }else if(RDP_VALID == true && pos_x < -0.9 && pos_y < -0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = 0.3;
-        }else if(RDP_VALID == true && pos_x < -0.76 && pos_y > 0.1){
+        }else if(RDP_VALID == true && pos_x < -0.9 && pos_y > 0.1){
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = -0.3;

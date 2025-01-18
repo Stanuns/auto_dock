@@ -264,7 +264,7 @@ void LidarAlign::scanProc(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan
     VectorXf::Index minRow,minCol;
     double min_value = rele.minCoeff(&minRow,&minCol);
     //debug
-    // RCLCPP_INFO(this->get_logger(),"rele_min_value:%.6f", min_value);
+    RCLCPP_INFO(this->get_logger(),"rele_min_value:%.6f,range_s:%.6f, range_e:%.6f", min_value, ranges_filtered[minRow], ranges_filtered[index_end(minRow)]);
     if(min_value > THRESHOLD_RELEVANCE){
 
         dock_center_pose.header.stamp = this->get_clock()->now();
