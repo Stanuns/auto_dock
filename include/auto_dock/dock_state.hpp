@@ -10,6 +10,7 @@ struct RobotState {
         FIND_DOCK,
         GET_PARALLEL,
         POSITION_ALIGN,
+        POSITION_ALIGN_EXTENSION,
         ANGLE_ALIGN,
         DOCKING,
         TURN_AROUND, //尾部对接需要

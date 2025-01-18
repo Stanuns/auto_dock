@@ -66,6 +66,7 @@ protected:
     void find_dock(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void get_parallel(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void position_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void position_align_extension(RobotState::State& state, double& vx, double& wz);
     void angle_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void docking(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void turn_around(RobotState::State& state, double& vx, double& wz, double& yaw_update);
@@ -83,6 +84,7 @@ private:
     int to_position_align_count_;
     int docked_in_count_;
     int to_last_dock_count_;
+    int count_pae_;
 
     RobotState::State state_;
     std::string state_str_;
