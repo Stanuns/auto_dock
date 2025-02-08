@@ -59,14 +59,14 @@ public:
     }
 
 protected:
-    void computePoseUpdate(double& yaw_update, nav_msgs::msg::Odometry::SharedPtr odom);
-    void updateVelocity(double& yaw_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void computePoseUpdate(double& yaw_update, double& linear_update, nav_msgs::msg::Odometry::SharedPtr odom);
+    void updateVelocity(double& yaw_update, double& linear_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void idle(RobotState::State& state, double& vx, double& wz); //
     void scan(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose, double& yaw_update);
     void find_dock(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void get_parallel(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void position_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
-    void position_align_extension(RobotState::State& state, double& vx, double& wz);
+    void position_align_extension(RobotState::State& state, double& vx, double& wz, double& linear_update);
     void angle_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void docking(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void turn_around(RobotState::State& state, double& vx, double& wz, double& yaw_update);

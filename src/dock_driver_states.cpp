@@ -241,7 +241,7 @@
         nwz = next_wz;
     }
 
-    void DockDriver::position_align_extension(RobotState::State& nstate, double& nvx, double& nwz)
+    void DockDriver::position_align_extension(RobotState::State& nstate, double& nvx, double& nwz, double& linear_update)
     {
         //由于激光雷达安装方式会造成遮挡
         //激光雷达定位dock丢失之后，继续向前移动一段距离，以达到position align dock的目的

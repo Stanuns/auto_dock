@@ -39,14 +39,14 @@ DockDriver::~DockDriver(){;}
 void DockDriver::update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
 {
     // ecl::LegacyPose2D<double> pose_update;
-    double yaw_update;
-    computePoseUpdate(yaw_update, odom);
-    updateVelocity(yaw_update, relative_dock_pose);
+    double yaw_update, linear_update;
+    computePoseUpdate(yaw_update, linear_update, odom);
+    updateVelocity(yaw_update, linear_update, relative_dock_pose);
     RCLCPP_INFO(this->get_logger(), "cmd update, vx_=%.6f. wz_=%.6f. state_=%s", vx_, wz_, state_str_.c_str());
     publishCmd(vx_,wz_);
 }
 
-void DockDriver::updateVelocity(double& yaw_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
+void DockDriver::updateVelocity(double& yaw_update, double& linear_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
 {
     RobotState::State current_state, new_state;
     double new_vx = 0.0;
@@ -71,7 +71,7 @@ void DockDriver::updateVelocity(double& yaw_update, const robot_interfaces::msg:
             position_align(new_state, new_vx, new_wz, relative_dock_pose);
             break;
         case RobotState::POSITION_ALIGN_EXTENSION:
-            position_align_extension(new_state, new_vx, new_wz);
+            position_align_extension(new_state, new_vx, new_wz, linear_update);
             break;
         case RobotState::ANGLE_ALIGN:
             angle_align(new_state, new_vx, new_wz, relative_dock_pose);
@@ -111,24 +111,28 @@ void DockDriver::publishCmd(const double &vx, const double &wz){
 
 
 //根据odometry数据计算pose的变化量
-void DockDriver::computePoseUpdate(double& yaw_update, nav_msgs::msg::Odometry::SharedPtr odom)
+void DockDriver::computePoseUpdate(double& yaw_update, double& linear_update, nav_msgs::msg::Odometry::SharedPtr odom)
 {
     if(IfFirstTime){
         IfFirstTime = false;
 
         yaw_update = 0;
+        linear_update = 0;
         odom_priv_ = move(odom);
     }else{
         double yaw_current = tf2::getYaw(odom->pose.pose.orientation); //值区间[-180 180]
         yaw_update = yaw_current - tf2::getYaw(odom_priv_->pose.pose.orientation);
         yaw_update = yaw_update*180/M_PI;
-
         //值区间映射到[-180,180]
         if(yaw_update < -180){ 
             yaw_update = yaw_update + 360;
         }else if(yaw_update > 180){
             yaw_update = yaw_update - 360;
         }
+
+        double linear_current = odom->pose.pose.position;
+        linear_update = sqrt(pow(linear_current.x - odom_priv_->pose.pose.position.x, 2) + pow(linear_current.y - odom_priv_->pose.pose.position.y, 2));
+
 
         odom_priv_ = move(odom);
     }
