@@ -15,6 +15,7 @@ find_package(Eigen3 3.3 REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(nav2_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -40,6 +41,26 @@ target_include_directories(lidar_align PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(lidar_align PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
+add_executable(lidar_align_simple src/lidar_align_simple.cpp)
+ament_target_dependencies(
+  lidar_align_simple
+  sensor_msgs
+  geometry_msgs
+  nav_msgs
+  rclcpp
+  robot_interfaces
+  tf2 
+  tf2_ros 
+  tf2_geometry_msgs
+  visualization_msgs
+)
+target_link_libraries(lidar_align_simple Eigen3::Eigen)
+
+target_include_directories(lidar_align_simple PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(lidar_align_simple PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -53,7 +74,8 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS
-  lidar_align 
+  lidar_align
+  lidar_align_simple 
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch
    DESTINATION share/${PROJECT_NAME})

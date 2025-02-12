@@ -130,7 +130,7 @@ void DockDriver::computePoseUpdate(double& yaw_update, double& linear_update, na
             yaw_update = yaw_update - 360;
         }
 
-        double linear_current = odom->pose.pose.position;
+        geometry_msgs::msg::Point linear_current = odom->pose.pose.position;
         linear_update = sqrt(pow(linear_current.x - odom_priv_->pose.pose.position.x, 2) + pow(linear_current.y - odom_priv_->pose.pose.position.y, 2));
 
 

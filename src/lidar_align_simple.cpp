@@ -9,70 +9,74 @@
 #include <array>
 
 #define VISUAL 1
-#define MAX_RANGES_FROM_CHANGE 2.0
-#define MIN_RANGES_INDEX 90
-#define MAX_RANGES_INDEX 270
+#define MAX_RANGES_FROM_DOCK 2.0
+// #define MIN_RANGES_INDEX 60
+// #define MAX_RANGES_INDEX 300
 
 constexpr float SMOOTH_THRESHOLD = 0.02f;
-constexpr float MUTATION_THRESHOLD_LOW = 0.025f;
-constexpr float MUTATION_THRESHOLD_HIGH = 0.065f;
+constexpr float MUTATION_THRESHOLD_LOW = 0.030f; //dock_thick 0.037
+constexpr float MUTATION_THRESHOLD_HIGH = 0.045f;
 constexpr float MUTATION_DIFF_THRESHOLD = 0.08f;
 constexpr float VISUAL_SCALE = 0.04f;
 
-class ChargeHubNode : public rclcpp::Node {
+using namespace std;
+
+class LidarAlignSimpleNode : public rclcpp::Node {
 public:
-    ChargeHubNode() : Node("charge_hub") {
+    LidarAlignSimpleNode() : Node("lidar_align_simple") {
         subscription_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-            "scan", 10, std::bind(&ChargeHubNode::laserScanCallback, this, std::placeholders::_1));
-        publisher_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("charge", 10);
+            "scan", 10, std::bind(&LidarAlignSimpleNode::laserScanCallback, this, std::placeholders::_1));
+        publisher_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("dock", 10);
 #if VISUAL
-        charge_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("charge_marker", 10);
+        dock_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("dock_marker", 10);
         point_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("point_marker", 10);
 #endif
     }
 
 private:
-    void publishChargeInfo(float angle_left, float range_left, float angle_right, float range_right, float angle_centre, float range_centre) {
-        auto charge_info = std_msgs::msg::Float32MultiArray();
-        charge_info.data = {angle_left, range_left, angle_right, range_right, angle_centre, range_centre};
-        publisher_->publish(charge_info);
+    void publishDockInfo(float angle_left, float range_left, float angle_right, float range_right, float angle_centre, float range_centre) {
+        auto dock_info = std_msgs::msg::Float32MultiArray();
+        dock_info.data = {angle_left, range_left, angle_right, range_right, angle_centre, range_centre};
+        publisher_->publish(dock_info);
     }
 
 #if VISUAL
-    void publishVisualization(const sensor_msgs::msg::LaserScan::SharedPtr& msg, 
-                              const std::vector<geometry_msgs::msg::Point>& points,
+    void publishDockVisual(const sensor_msgs::msg::LaserScan::SharedPtr& scan,                         
                               float angle_left, float range_left,
                               float angle_right, float range_right,
                               float angle_centre, float range_centre) {
         geometry_msgs::msg::Point point1, point2, point3;
-        point1.x = -range_left * cosf(angle_left * msg->angle_increment);
-        point1.y = -range_left * sinf(angle_left * msg->angle_increment);
+        point1.x = range_left * cosf(angle_left);
+        point1.y = range_left * sinf(angle_left);
         point1.z = 0.0;
 
-        point2.x = -range_right * cosf(angle_right * msg->angle_increment);
-        point2.y = -range_right * sinf(angle_right * msg->angle_increment);
+        point2.x = range_right * cosf(angle_right);
+        point2.y = range_right * sinf(angle_right);
         point2.z = 0.0;
 
-        point3.x = -range_centre * cosf(angle_centre * msg->angle_increment);
-        point3.y = -range_centre * sinf(angle_centre * msg->angle_increment);
+        point3.x = range_centre * cosf(angle_centre);
+        point3.y = range_centre * sinf(angle_centre);
         point3.z = 0.0;
 
-        auto charge_hub_mark = visualization_msgs::msg::Marker();
-        charge_hub_mark.header.stamp = msg->header.stamp;
-        charge_hub_mark.header.frame_id = msg->header.frame_id;
-        charge_hub_mark.type = visualization_msgs::msg::Marker::POINTS;
-        charge_hub_mark.points = {point1, point2, point3};
-        charge_hub_mark.scale.x = VISUAL_SCALE;
-        charge_hub_mark.scale.y = VISUAL_SCALE;
-        charge_hub_mark.color.r = 154.0 / 255.0;
-        charge_hub_mark.color.g = 50.0 / 255.0;
-        charge_hub_mark.color.b = 205.0 / 255.0;
-        charge_hub_mark.color.a = 1.0;
-        charge_marker_pub_->publish(charge_hub_mark);
+        auto dock_hub_mark = visualization_msgs::msg::Marker();
+        dock_hub_mark.header.stamp = scan->header.stamp;
+        dock_hub_mark.header.frame_id = scan->header.frame_id;
+        dock_hub_mark.type = visualization_msgs::msg::Marker::POINTS;
+        dock_hub_mark.points = {point1, point2, point3};
+        dock_hub_mark.scale.x = VISUAL_SCALE;
+        dock_hub_mark.scale.y = VISUAL_SCALE;
+        dock_hub_mark.color.r = 154.0 / 255.0;
+        dock_hub_mark.color.g = 50.0 / 255.0;
+        dock_hub_mark.color.b = 205.0 / 255.0;
+        dock_hub_mark.color.a = 1.0;
+        dock_marker_pub_->publish(dock_hub_mark);
+    }
 
+    void publishMutationVisual(const sensor_msgs::msg::LaserScan::SharedPtr& scan,
+                            const std::vector<geometry_msgs::msg::Point>& points){
         auto point_mark = visualization_msgs::msg::Marker();
-        point_mark.header.stamp = msg->header.stamp;
-        point_mark.header.frame_id = msg->header.frame_id;
+        point_mark.header.stamp = scan->header.stamp;
+        point_mark.header.frame_id = scan->header.frame_id;
         point_mark.type = visualization_msgs::msg::Marker::POINTS;
         point_mark.points = points;
         point_mark.scale.x = VISUAL_SCALE;
@@ -85,18 +89,25 @@ private:
     }
 #endif
 
-    void laserScanCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
-        std::vector<float> laser_ranges(MAX_RANGES_INDEX - MIN_RANGES_INDEX);
-        std::vector<bool> mutation_point(laser_ranges.size(), false);
-        std::array<int, 4> mutation_point_index = {0};
-        std::vector<geometry_msgs::msg::Point> points;
+    void laserScanCallback(const sensor_msgs::msg::LaserScan::SharedPtr scan) {
+        RCLCPP_INFO(this->get_logger(), "laserScanCallback start...");
+
+        scan_count = scan->ranges.size();
+        min_ranges_index = (int) scan_count*1/6;
+        max_ranges_index = (int) scan_count*5/6;
+
+        vector<float> laser_ranges(max_ranges_index - min_ranges_index);
+        vector<bool> mutation_point(laser_ranges.size(), false);
+        array<int, 4> mutation_point_index = {0};
+        vector<geometry_msgs::msg::Point> points;
 
         // Preprocess laser ranges
-        for (size_t i = MIN_RANGES_INDEX; i < MAX_RANGES_INDEX; i++) {
-            if (std::isinf(msg->ranges[i]) || msg->ranges[i] > MAX_RANGES_FROM_CHANGE) {
-                laser_ranges[i - MIN_RANGES_INDEX] = 0;
+        for (size_t i = min_ranges_index; i < max_ranges_index; i++) {
+            r = scan->ranges[i];
+            if (r > MAX_RANGES_FROM_DOCK || isinf(r) || std::isnan(r)) {
+                laser_ranges[i - min_ranges_index] = 0;
             } else {
-                laser_ranges[i - MIN_RANGES_INDEX] = msg->ranges[i];
+                laser_ranges[i - min_ranges_index] = r;
             }
         }
 
@@ -125,8 +136,8 @@ private:
         for (size_t i = 0; i < mutation_point.size(); i++) {
             if (mutation_point[i]) {
                 geometry_msgs::msg::Point temp_point;
-                temp_point.x = -laser_ranges[i] * cosf((i + MIN_RANGES_INDEX) * msg->angle_increment);
-                temp_point.y = -laser_ranges[i] * sinf((i + MIN_RANGES_INDEX) * msg->angle_increment);
+                temp_point.x = laser_ranges[i] * cosf(scan->angle_min + (i + min_ranges_index) * scan->angle_increment);
+                temp_point.y = laser_ranges[i] * sinf(scan->angle_min + (i + min_ranges_index) * scan->angle_increment);
                 temp_point.z = 0.0;
                 points.push_back(temp_point);
             }
@@ -146,27 +157,35 @@ private:
         if (mutation_point_count == 4) {
             bool find_mutation_flag = false;
             for (size_t i = 0; i < mutation_point.size(); i++) {
+
                 if (laser_ranges[mutation_point_index[0]] < laser_ranges[mutation_point_index[1]] &&
                     laser_ranges[mutation_point_index[2]] < laser_ranges[mutation_point_index[3]]) {
+
                     if (laser_ranges[mutation_point_index[0]] < laser_ranges[mutation_point_index[0] - 5] &&
                         laser_ranges[mutation_point_index[3]] < laser_ranges[mutation_point_index[3] + 5]) {
-                        if (abs(mutation_point_index[0] - mutation_point_index[1]) < 7 &&
-                            abs(mutation_point_index[2] - mutation_point_index[3]) < 7) {
+
+                        if (abs(mutation_point_index[0] - mutation_point_index[1]) < 12 &&
+                            abs(mutation_point_index[2] - mutation_point_index[3]) < 12) {
+
                             if (fabs(laser_ranges[mutation_point_index[0]] - laser_ranges[mutation_point_index[1]]) < MUTATION_DIFF_THRESHOLD &&
                                 fabs(laser_ranges[mutation_point_index[2]] - laser_ranges[mutation_point_index[3]]) < MUTATION_DIFF_THRESHOLD) {
+                                    
                                 find_mutation_flag = true;
 
-                                int angle_left_charge = MIN_RANGES_INDEX + mutation_point_index[3];
-                                int angle_right_charge = MIN_RANGES_INDEX + mutation_point_index[0];
-                                float ranges_left_charge = laser_ranges[mutation_point_index[3]];
-                                float ranges_right_charge = laser_ranges[mutation_point_index[0]] + 0.06f;
-                                int angle_centre_charge = (int)(0.5f + (angle_left_charge + angle_right_charge) / 2.0f);
-                                float ranges_centre_charge = msg->ranges[angle_centre_charge];
+                                int angle_right_dock_index = min_ranges_index + mutation_point_index[0];
+                                int angle_left_dock_index = min_ranges_index + mutation_point_index[3];
+                                float angle_right_dock = scan->angle_min + scan->angle_increment * angle_right_dock_index;
+                                float angle_left_dock = scan->angle_min + scan->angle_increment * angle_left_dock_index;
+                                float ranges_right_dock = laser_ranges[mutation_point_index[0]];
+                                float ranges_left_dock = laser_ranges[mutation_point_index[3]];
+                                
+                                float angle_centre_dock = (angle_left_dock + angle_right_dock) / 2.0f;
+                                float ranges_centre_dock = scan->ranges[(int)((angle_right_dock_index + angle_left_dock_index)/2)];
 
-                                publishChargeInfo(angle_left_charge, ranges_left_charge, angle_right_charge, ranges_right_charge, angle_centre_charge, ranges_centre_charge);
+                                publishDockInfo(angle_left_dock, ranges_left_dock, angle_right_dock, ranges_right_dock, angle_centre_dock, ranges_centre_dock);
 
 #if VISUAL
-                                publishVisualization(msg, points, angle_left_charge, ranges_left_charge, angle_right_charge, ranges_right_charge, angle_centre_charge, ranges_centre_charge);
+                                publishDockVisual(scan, angle_left_dock, ranges_left_dock, angle_right_dock, ranges_right_dock, angle_centre_dock, ranges_centre_dock);
 #endif
                                 break;
                             }
@@ -188,24 +207,29 @@ private:
             }
 
             if (!find_mutation_flag) {
-                publishChargeInfo(0, 0, 0, 0, 0, 0);
+                publishDockInfo(0, 0, 0, 0, 0, 0);
             }
+
+            publishMutationVisual(scan, points);
         } else {
-            publishChargeInfo(0, 0, 0, 0, 0, 0);
+            publishDockInfo(0, 0, 0, 0, 0, 0);
         }
     }
 
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr subscription_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_;
+    int scan_count;
+    int min_ranges_index, max_ranges_index;
+    double r;
 #if VISUAL
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr charge_marker_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr dock_marker_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr point_marker_pub_;
 #endif
 };
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<ChargeHubNode>());
+    rclcpp::spin(std::make_shared<LidarAlignSimpleNode>());
     rclcpp::shutdown();
     return 0;
 }
