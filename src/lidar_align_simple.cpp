@@ -9,13 +9,13 @@
 #include <array>
 
 #define VISUAL 1
-#define MAX_RANGES_FROM_DOCK 2.0
+#define MAX_RANGES_FROM_DOCK 1.5
 // #define MIN_RANGES_INDEX 60
 // #define MAX_RANGES_INDEX 300
 
 constexpr float SMOOTH_THRESHOLD = 0.02f;
-constexpr float MUTATION_THRESHOLD_LOW = 0.030f; //dock_thick 0.037
-constexpr float MUTATION_THRESHOLD_HIGH = 0.045f;
+constexpr float MUTATION_THRESHOLD_LOW = 0.027f; //dock_thick 0.037
+constexpr float MUTATION_THRESHOLD_HIGH = 0.047f;
 constexpr float MUTATION_DIFF_THRESHOLD = 0.08f;
 constexpr float VISUAL_SCALE = 0.04f;
 
@@ -124,7 +124,7 @@ private:
         // Detect mutation points
         int mutation_point_num = 0;
         for (size_t i = 0; i < laser_ranges.size() - 2; i++) {
-            float diff = fabs(laser_ranges[i] - laser_ranges[i + 1]);
+            float diff = fabs(laser_ranges[i] - laser_ranges[i + 3]);
             if (diff > MUTATION_THRESHOLD_LOW && diff < MUTATION_THRESHOLD_HIGH) {
                 mutation_point_num++;
                 mutation_point[i] = true;
@@ -164,8 +164,8 @@ private:
                     if (laser_ranges[mutation_point_index[0]] < laser_ranges[mutation_point_index[0] - 5] &&
                         laser_ranges[mutation_point_index[3]] < laser_ranges[mutation_point_index[3] + 5]) {
 
-                        if (abs(mutation_point_index[0] - mutation_point_index[1]) < 12 &&
-                            abs(mutation_point_index[2] - mutation_point_index[3]) < 12) {
+                        if (abs(mutation_point_index[0] - mutation_point_index[1]) < 7 &&
+                            abs(mutation_point_index[2] - mutation_point_index[3]) < 7) {
 
                             if (fabs(laser_ranges[mutation_point_index[0]] - laser_ranges[mutation_point_index[1]]) < MUTATION_DIFF_THRESHOLD &&
                                 fabs(laser_ranges[mutation_point_index[2]] - laser_ranges[mutation_point_index[3]]) < MUTATION_DIFF_THRESHOLD) {
@@ -183,6 +183,7 @@ private:
                                 float ranges_centre_dock = scan->ranges[(int)((angle_right_dock_index + angle_left_dock_index)/2)];
 
                                 publishDockInfo(angle_left_dock, ranges_left_dock, angle_right_dock, ranges_right_dock, angle_centre_dock, ranges_centre_dock);
+                                // publishMutationVisual(scan, points);
 
 #if VISUAL
                                 publishDockVisual(scan, angle_left_dock, ranges_left_dock, angle_right_dock, ranges_right_dock, angle_centre_dock, ranges_centre_dock);
@@ -209,7 +210,6 @@ private:
             if (!find_mutation_flag) {
                 publishDockInfo(0, 0, 0, 0, 0, 0);
             }
-
             publishMutationVisual(scan, points);
         } else {
             publishDockInfo(0, 0, 0, 0, 0, 0);

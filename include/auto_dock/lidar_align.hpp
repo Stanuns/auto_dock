@@ -26,14 +26,25 @@ struct LinePara{ //直线参数 ax+by+c=0
     double c;
 };
 
-#define DOCK_LENGTH 0.33
+//big size dock hub
+// #define DOCK_LENGTH 0.33
+// #define DOCK_ORIENT 1 //DOCK_ORIENT为1：表示lidar的逆时针扫描方向，先遇到DOCK的长度为37mm的突出物
+// #define DOCK_STRUCTURE_KEY1  0.037 //表示lidar的逆时针扫描方向，先遇到DOCK的长度为37mm的突出物,此处限制了dock的摆放方式。
+// #define DOCK_STRUCTURE_KEY2  0.103
+// #define DOCK_STRUCTURE_KEY3  0.163
+// #define DOCK_STRUCTURE_KEY4  0.235
+// #define SCAN_COUNT_MIN  20
+// #define DOCK_LENGTH_MIN 0.27
+
+//small size dock hub
+#define DOCK_LENGTH 0.24
 #define DOCK_ORIENT 1 //DOCK_ORIENT为1：表示lidar的逆时针扫描方向，先遇到DOCK的长度为30mm的突出物
-#define DOCK_STRUCTURE_KEY1  0.037 //表示lidar的逆时针扫描方向，先遇到DOCK的长度为30mm的突出物,此处限制了dock的摆放方式。
-#define DOCK_STRUCTURE_KEY2  0.103
-#define DOCK_STRUCTURE_KEY3  0.163
-#define DOCK_STRUCTURE_KEY4  0.235
+#define DOCK_STRUCTURE_KEY1  0.03 //表示lidar的逆时针扫描方向，先遇到DOCK的长度为30mm的突出物,此处限制了dock的摆放方式。
+#define DOCK_STRUCTURE_KEY2  0.08
+#define DOCK_STRUCTURE_KEY3  0.13
+#define DOCK_STRUCTURE_KEY4  0.18
 #define SCAN_COUNT_MIN  20
-#define DOCK_LENGTH_MIN 0.27
+#define DOCK_LENGTH_MIN 0.2
 
 class LidarAlign : public rclcpp::Node{
 public:
