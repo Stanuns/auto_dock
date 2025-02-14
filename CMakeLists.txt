@@ -21,6 +21,13 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(message_filters REQUIRED)
+find_package(PCL REQUIRED)
+find_package(pcl_conversions REQUIRED)
+
+include_directories(
+  include
+  ${PCL_INCLUDE_DIRS}
+)
 
 add_executable(lidar_align src/lidar_align.cpp)
 ament_target_dependencies(
@@ -61,6 +68,19 @@ target_include_directories(lidar_align_simple PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(lidar_align_simple PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
+add_executable(wall_detection src/wall_detection.cpp)
+ament_target_dependencies(wall_detection 
+  rclcpp 
+  sensor_msgs 
+  geometry_msgs 
+  pcl_conversions 
+  PCL
+)
+target_include_directories(wall_detection PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(wall_detection PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -76,6 +96,7 @@ endif()
 install(TARGETS
   lidar_align
   lidar_align_simple 
+  wall_detection
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch
    DESTINATION share/${PROJECT_NAME})

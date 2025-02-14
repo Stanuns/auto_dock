@@ -124,7 +124,7 @@ private:
         // Detect mutation points
         int mutation_point_num = 0;
         for (size_t i = 0; i < laser_ranges.size() - 2; i++) {
-            float diff = fabs(laser_ranges[i] - laser_ranges[i + 3]);
+            float diff = fabs(laser_ranges[i] - laser_ranges[i + 2]);
             if (diff > MUTATION_THRESHOLD_LOW && diff < MUTATION_THRESHOLD_HIGH) {
                 mutation_point_num++;
                 mutation_point[i] = true;

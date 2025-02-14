@@ -15,8 +15,8 @@ def generate_launch_description():
 
         Node(
             package='auto_dock', 
-            executable='lidar_align', 
-            name='lidar_align',
+            executable='wall_detection', 
+            name='wall_detection',
             output='screen', 
             parameters=[{'use_sim_time':use_sim_time}]
         ),
