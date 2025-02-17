@@ -16,18 +16,25 @@ def generate_launch_description():
         default_value='false',
         description='Use simulation (Gazebo) clock if true'),
 
-        Node(
-            package='auto_dock', 
-            executable='auto_dock_action_server', 
-            name='auto_dock_action_server',
-            output='screen', 
-            parameters=[{'use_sim_time':use_sim_time}],
-            remappings=remappings
-        ),
+        # Node(
+        #     package='auto_dock', 
+        #     executable='auto_dock_action_server', 
+        #     name='auto_dock_action_server',
+        #     output='screen', 
+        #     parameters=[{'use_sim_time':use_sim_time}],
+        #     remappings=remappings
+        # ),
         Node(
             package='auto_dock', 
             executable='lidar_align', 
             name='lidar_align',
+            output='screen', 
+            parameters=[{'use_sim_time':use_sim_time}]
+        ),
+        Node(
+            package='auto_dock', 
+            executable='wall_detection', 
+            name='wall_detection',
             output='screen', 
             parameters=[{'use_sim_time':use_sim_time}]
         ),

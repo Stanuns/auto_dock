@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include "robot_interfaces/msg/wall_pose_stamped.hpp"
 
 #define MAX_RANGES 1.0
 #define R_INF 30.0
@@ -31,7 +32,7 @@ public:
             "/scan", 10, std::bind(&WallDetection::laserCallback, this, std::placeholders::_1));
 
         // 发布检测到的直线
-        wall_pub_ = this->create_publisher<geometry_msgs::msg::PoseArray>("/wall_pose", 10);
+        wall_pub_ = this->create_publisher<robot_interfaces::msg::WallPoseStamped>("/wall_pose", 10);
 
         // 初始化TF
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
@@ -40,6 +41,7 @@ public:
 private:
     void laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr scan)
     {
+        // RCLCPP_INFO(this->get_logger(), "Wall detection running....");
         int scan_count = scan->ranges.size();
         vector<float> ranges_filtered;
         ranges_filtered.resize(scan_count);
@@ -95,14 +97,14 @@ private:
         // 发布检测到的直线
         if (inliers->indices.size() > 0)
         {
-            geometry_msgs::msg::PoseArray wall_poses;
-            wall_poses.header.stamp = this->now();
-            wall_poses.header.frame_id = "laser_frame";
+            robot_interfaces::msg::WallPoseStamped wall_pose;
+            wall_pose.header.stamp = this->now();
+            wall_pose.header.frame_id = "laser_frame";
 
-            geometry_msgs::msg::Pose pose;
-            pose.position.x = coefficients->values[0];
-            pose.position.y = coefficients->values[1];
-            pose.position.z = 0.0;
+            // geometry_msgs::msg::Pose pose;
+            wall_pose.pose.position.x = coefficients->values[0];
+            wall_pose.pose.position.y = coefficients->values[1];
+            wall_pose.pose.position.z = 0.0;
 
             // 计算直线的方向角
             double a = coefficients->values[3]; // 直线方程中的a
@@ -113,14 +115,10 @@ private:
             q.setRPY(0, 0, theta); // 设置旋转角度
             geometry_msgs::msg::Quaternion wall_pose_quat;
             wall_pose_quat = tf2::toMsg(q);//将tf2::Quaternion转换成geometry_msgs::msg::Quaternion
-            pose.orientation = wall_pose_quat;
-            // double pose_dis = sqrt(pow(pose.position.x - 0, 2) + pow(pose.position.y - 0, 2));
+            wall_pose.pose.orientation = wall_pose_quat;
+            // double pose_dis = sqrt(pow(wall_pose.pose.position.x - 0, 2) + pow(wall_pose.pose.position.y - 0, 2));
             // RCLCPP_INFO(this->get_logger(), "Detected distance of wall pose to laser origin: %f", pose_dis);
-
-            wall_poses.poses.push_back(pose);
-            wall_pub_->publish(wall_poses);
-            RCLCPP_INFO(this->get_logger(), "Detected wall direction angle: %f radians, and wall pose size: %d", 
-                        (theta*180)/M_PI, inliers->indices.size());
+            wall_pose.size = inliers->indices.size();
 
             // 计算激光雷达原点到直线的距离
             double x1 = coefficients->values[0]; // 直线上的一个点
@@ -128,7 +126,13 @@ private:
             double m = coefficients->values[4] / coefficients->values[3]; // 斜率
             double C = y1 - m * x1; // 计算C
             double distance = fabs(C) / sqrt(m * m + 1); // 计算距离
-            RCLCPP_INFO(this->get_logger(), "Distance from laser origin to wall: %f meters", distance);
+            wall_pose.distance = distance;
+            // RCLCPP_INFO(this->get_logger(), "Distance from laser origin to wall: %f meters", distance);
+
+            wall_pub_->publish(wall_pose);
+            //debug
+            RCLCPP_INFO(this->get_logger(), "Detected wall direction angle: %f degree, and wall pose size: %d, and distance: %f", 
+                        (theta*180)/M_PI, inliers->indices.size(), distance);
 
             // 发布TF变换
             geometry_msgs::msg::TransformStamped transformStamped;
@@ -168,7 +172,7 @@ private:
     }
 
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_sub_;
-    rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr wall_pub_;
+    rclcpp::Publisher<robot_interfaces::msg::WallPoseStamped>::SharedPtr wall_pub_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     std::deque<double> theta_values_;
 };

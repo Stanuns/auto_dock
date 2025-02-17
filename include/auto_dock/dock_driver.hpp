@@ -49,7 +49,8 @@ public:
 
     RobotState::State getState() const { return state_; }
     std::string getStateStr() const { return state_str_; }
-    void update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
+                const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr wall_pose);
     void publishCmd(const double &vx, const double &wz);
 
 

@@ -78,6 +78,7 @@ ament_target_dependencies(wall_detection
   tf2_ros
   tf2
   tf2_geometry_msgs
+  robot_interfaces
 )
 target_include_directories(wall_detection PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
