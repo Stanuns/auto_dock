@@ -23,6 +23,7 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include "robot_interfaces/msg/wall_pose_stamped.hpp"
 
 
 #ifndef SRC_DOCK_DRIVE_HPP
@@ -61,15 +62,29 @@ public:
 
 protected:
     void computePoseUpdate(double& yaw_update, double& linear_update, nav_msgs::msg::Odometry::SharedPtr odom);
-    void updateVelocity(double& yaw_update, double& linear_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void updateVelocity(double& yaw_update, double& linear_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
+                        const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose);
     void idle(RobotState::State& state, double& vx, double& wz); //
-    void scan(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose, double& yaw_update);
+    void scan(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose, 
+                double& yaw_update);
+    
+    void find_wall(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose);
+    void scan2(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose, 
+                double& yaw_update);
+    
     void find_dock(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
-    void get_parallel(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+    void get_parallel(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
+                        const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose);
+    
+    void move_align(RobotState::State& state, double& vx, double& wz, double& linear_update);
+
+    //未被使用
     void position_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void position_align_extension(RobotState::State& state, double& vx, double& wz, double& linear_update);
     void angle_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
-    void docking(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
+
+    void docking(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
+                    const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose);
     void turn_around(RobotState::State& state, double& vx, double& wz, double& yaw_update);
     void last_dock(RobotState::State& state, double& vx, double& wz); //有红外传感器, 需增加该传感器信息
     void docked_in(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
@@ -79,10 +94,12 @@ private:
     // Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     int dock_pos_detector_;
     double rotated_; //角度
+    double linear_; //线运动距离
     double angle_parallel_;
     double position_align_pos_x_;
     int to_docking_count_;
     int to_position_align_count_;
+    int to_move_align;
     int docked_in_count_;
     int to_last_dock_count_;
     int count_pae_;
@@ -95,8 +112,10 @@ private:
 
     void setVel(double v, double w);
     std::vector<std::string> ROBOT_STATE_STR;
-    bool RDP_VALID;
+    bool DOCK_VALID;
+    bool WALL_VALID;
     bool IfFirstTime;
+    double relative_dock_pose_y_;
 
 };
 

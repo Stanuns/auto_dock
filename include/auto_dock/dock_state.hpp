@@ -7,11 +7,14 @@ struct RobotState {
     enum State {
         IDLE,
         SCAN,
+        FIND_WALL,//垂直于墙壁方向，并保证离墙距离范围0.8~1.1m
+        SCAN2,//开始找DOCK
         FIND_DOCK,
         GET_PARALLEL,
-        POSITION_ALIGN,
-        POSITION_ALIGN_EXTENSION,
-        ANGLE_ALIGN,
+        MOVE_ALIGN,
+        POSITION_ALIGN, //未被使用
+        POSITION_ALIGN_EXTENSION, //未被使用
+        ANGLE_ALIGN,//未被使用
         DOCKING,
         TURN_AROUND, //尾部对接需要
         LAST_DOCK,   //尾部对接需要

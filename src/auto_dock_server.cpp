@@ -31,9 +31,11 @@ public:
 
   message_filters::Subscriber<nav_msgs::msg::Odometry> odom_sub_;
   message_filters::Subscriber<robot_interfaces::msg::DockPoseStamped> relative_dock_pose_sub_;
+  message_filters::Subscriber<robot_interfaces::msg::WallPoseStamped> relative_wall_pose_sub_;
   typedef message_filters::sync_policies::ApproximateTime<
         nav_msgs::msg::Odometry,
-        robot_interfaces::msg::DockPoseStamped
+        robot_interfaces::msg::DockPoseStamped,
+        robot_interfaces::msg::WallPoseStamped
   > SyncPolicy;
   message_filters::Synchronizer<SyncPolicy> sync_;
 
@@ -43,7 +45,7 @@ public:
   AUTO_DOCK_PUBLIC
   explicit AutoDockActionServer()
   : Node("auto_dock_action_server"),
-  sync_(SyncPolicy(10), odom_sub_, relative_dock_pose_sub_)
+  sync_(SyncPolicy(10), odom_sub_, relative_dock_pose_sub_, relative_wall_pose_sub_)
   {
     using namespace std::placeholders;
 
@@ -58,6 +60,7 @@ public:
 
     odom_sub_.subscribe(this, "/odom"); //odom_combined
     relative_dock_pose_sub_.subscribe(this, "/relative_dock_pose");
+    relative_wall_pose_sub_.subscribe(this, "/relative_wall_pose");
     // sync_.registerCallback(&AutoDockActionServer::syncCallback, this);
 
     RCLCPP_INFO(this->get_logger(), "AutoDockActionServer initialize done......");
@@ -67,7 +70,9 @@ public:
     delete dock_drive_;
   }
 
-  void syncCallback(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose){
+  void syncCallback(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
+                      const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose)
+  {
     RCLCPP_INFO(this->get_logger(), "Executing goal");
     // RCLCPP_INFO(this->get_logger(), "syncCallback......");
     // make sure that the action hasn't been canceled
@@ -84,7 +89,7 @@ public:
     if(goal->req_state == CHARGED && accepted_goal_handle->is_active()){
 
 
-      dock_drive_->update(odom, relative_dock_pose);
+      dock_drive_->update(odom, relative_dock_pose, relative_wall_pose);
 
       if (dock_drive_->getState() == RobotState::DOCKED_IN) {
           sleep(1);

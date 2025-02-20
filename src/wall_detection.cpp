@@ -32,7 +32,7 @@ public:
             "/scan", 10, std::bind(&WallDetection::laserCallback, this, std::placeholders::_1));
 
         // 发布检测到的直线
-        wall_pub_ = this->create_publisher<robot_interfaces::msg::WallPoseStamped>("/wall_pose", 10);
+        wall_pub_ = this->create_publisher<robot_interfaces::msg::WallPoseStamped>("/relative_wall_pose", 10);
 
         // 初始化TF
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);

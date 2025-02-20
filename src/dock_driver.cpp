@@ -14,21 +14,25 @@ DockDriver::DockDriver() :
         ,state_(RobotState::IDLE)
         ,state_str_("IDLE")
         ,vx_(0.0), wz_(0.0)
-        ,ROBOT_STATE_STR(11)
-        ,RDP_VALID(false)
+        ,ROBOT_STATE_STR(14)
+        ,DOCK_VALID(false)
+        ,WALL_VALID(false)
 {
     cmd_publisher_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
     ROBOT_STATE_STR[0] = "IDLE";
     ROBOT_STATE_STR[1] = "SCAN";
-    ROBOT_STATE_STR[2] = "FIND_DOCK";
-    ROBOT_STATE_STR[3] = "GET_PARALLEL";
-    ROBOT_STATE_STR[4] = "POSITION_ALIGN";
-    ROBOT_STATE_STR[5] = "POSITION_ALIGN_EXTENSION";
-    ROBOT_STATE_STR[6] = "ANGLE_ALIGN";
-    ROBOT_STATE_STR[7] = "DOCKING";
-    ROBOT_STATE_STR[8] = "TURN_AROUND";
-    ROBOT_STATE_STR[9] = "LAST_DOCK";
-    ROBOT_STATE_STR[10] = "DOCKED_IN";
+    ROBOT_STATE_STR[2] = "FIND_WALL";
+    ROBOT_STATE_STR[3] = "SCAN2";
+    ROBOT_STATE_STR[4] = "FIND_DOCK";
+    ROBOT_STATE_STR[5] = "GET_PARALLEL";
+    ROBOT_STATE_STR[6] = "MOVE_ALIGN";
+    ROBOT_STATE_STR[7] = "POSITION_ALIGN"; //未被使用
+    ROBOT_STATE_STR[8] = "POSITION_ALIGN_EXTENSION";//未被使用
+    ROBOT_STATE_STR[9] = "ANGLE_ALIGN";//未被使用
+    ROBOT_STATE_STR[10] = "DOCKING";
+    ROBOT_STATE_STR[11] = "TURN_AROUND";
+    ROBOT_STATE_STR[12] = "LAST_DOCK";
+    ROBOT_STATE_STR[13] = "DOCKED_IN";
 
     IfFirstTime = true;
 }
@@ -36,17 +40,19 @@ DockDriver::DockDriver() :
 DockDriver::~DockDriver(){;}
 
 
-void DockDriver::update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
+void DockDriver::update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
+    const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose)
 {
     // ecl::LegacyPose2D<double> pose_update;
     double yaw_update, linear_update;
     computePoseUpdate(yaw_update, linear_update, odom);
-    updateVelocity(yaw_update, linear_update, relative_dock_pose);
+    updateVelocity(yaw_update, linear_update, relative_dock_pose, relative_wall_pose);
     RCLCPP_INFO(this->get_logger(), "cmd update, vx_=%.6f. wz_=%.6f. state_=%s", vx_, wz_, state_str_.c_str());
     publishCmd(vx_,wz_);
 }
 
-void DockDriver::updateVelocity(double& yaw_update, double& linear_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose)
+void DockDriver::updateVelocity(double& yaw_update, double& linear_update, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
+                                const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose)
 {
     RobotState::State current_state, new_state;
     double new_vx = 0.0;
@@ -59,13 +65,19 @@ void DockDriver::updateVelocity(double& yaw_update, double& linear_update, const
             idle(new_state, new_vx, new_wz);
             break;
         case RobotState::SCAN:
-            scan(new_state, new_vx, new_wz, relative_dock_pose, yaw_update);
+            scan(new_state, new_vx, new_wz, relative_wall_pose, yaw_update);
+            break;
+        case RobotState::FIND_WALL:
+            find_wall(new_state, new_vx, new_wz, relative_wall_pose);
+            break;
+        case RobotState::SCAN2:
+            scan2(new_state, new_vx, new_wz, relative_dock_pose, yaw_update);
             break;
         case RobotState::FIND_DOCK:
             find_dock(new_state, new_vx, new_wz, relative_dock_pose);
             break;
         case RobotState::GET_PARALLEL:
-            get_parallel(new_state, new_vx, new_wz, relative_dock_pose);
+            get_parallel(new_state, new_vx, new_wz, relative_dock_pose, relative_wall_pose);
             break;
         case RobotState::POSITION_ALIGN:
             position_align(new_state, new_vx, new_wz, relative_dock_pose);
@@ -77,7 +89,7 @@ void DockDriver::updateVelocity(double& yaw_update, double& linear_update, const
             angle_align(new_state, new_vx, new_wz, relative_dock_pose);
             break;
         case RobotState::DOCKING:
-            docking(new_state, new_vx, new_wz, relative_dock_pose);
+            docking(new_state, new_vx, new_wz, relative_dock_pose, relative_wall_pose);
             break;
         case RobotState::TURN_AROUND:
             turn_around(new_state, new_vx, new_wz, yaw_update);
