@@ -30,6 +30,8 @@
         nstate = RobotState::SCAN;
         nvx = 0;
         nwz = NEXT_WZ;
+        to_find_wall_ = 0;
+        
     }
 
 
@@ -61,20 +63,32 @@
         if(WALL_VALID == true && ( fabs(wall_pos_yaw) < 5 || fabs(wall_pos_yaw - 180) < 5 || fabs(wall_pos_yaw - (-180)) < 5 )) //机器人正对着wall
         {
             next_state = RobotState::FIND_WALL;
+            
+            if(to_find_wall_ > 3){
+                next_state = RobotState::FIND_WALL;
+                to_find_wall_ = 0;
+                rotated_ = 0;
+            }else{
+                next_state = RobotState::SCAN;
+                to_find_wall_++;
+            }
             next_vx = 0.0;
-            next_wz = 0.0;
+            next_wz = -0.3;
 
-            rotated_ = 0;
+            RCLCPP_INFO(this->get_logger(), "------------------------------scan wall_pos_yaw= %.6f", wall_pos_yaw);
+
         }else if(fabs(rotated_) > 360+20) { // 转动超过一圈
             next_state = RobotState::SCAN;
             next_vx = 0.0;
             next_wz = 0.0;
 
             rotated_ = 0;
+            to_find_wall_ = 0;
         }else{
             next_state = RobotState::SCAN;
             next_vx = 0.0;
             next_wz = 0.21;
+            to_find_wall_ = 0;
         }
 
         RCLCPP_INFO(this->get_logger(), "scan rotated_= %.6f", rotated_);
@@ -98,11 +112,11 @@
         }
         double dis_wall = relative_wall_pose->pose.position.x;
 
-        if(WALL_VALID == true && fabs(dis_wall) < 0.6 ){
+        if(WALL_VALID == true && fabs(dis_wall) < 0.5 ){
             next_state = RobotState::FIND_WALL;
-            next_vx = -0.2;
+            next_vx = -0.1;
             next_wz = 0.0;
-        }else if(WALL_VALID == true && fabs(dis_wall) >= 0.6){
+        }else if(WALL_VALID == true && fabs(dis_wall) >= 0.5){
             next_state = RobotState::SCAN2;
             next_vx = 0.0;
             next_wz = 0.0;
@@ -144,33 +158,42 @@
 
        rotated_ += yaw_update;
 
-       if(DOCK_VALID == true && fabs(dock_pos_yaw) < 5) //机器人正对着dock
+       if(DOCK_VALID == true) //[-90,90]
        {
+           //计算激光雷达到DOCK的垂直平分线的距离
+           double k = tan(dock_pos_yaw);
+           double C = relative_dock_pose->pose.position.y - k * relative_dock_pose->pose.position.x;
+           double dis_laserToDock = fabs(C)/sqrt(k*k + 1);
+
+           //坐标系变换,将在laser坐标系中的原点(laser)变换到dock坐标系中
+           x_laser_inDock_ = -relative_dock_pose->pose.position.x*cos(dock_pos_yaw) - relative_dock_pose->pose.position.y*sin(dock_pos_yaw);
+           y_laser_inDock_ = relative_dock_pose->pose.position.x*sin(dock_pos_yaw)- relative_dock_pose->pose.position.y*cos(dock_pos_yaw);
+           
+           RCLCPP_INFO(this->get_logger(), "------scan2: dis_laserToDock= %.6f, y_laser_inDock_ = %.6f", dis_laserToDock, y_laser_inDock_);
+
            next_state = RobotState::FIND_DOCK;
            next_vx = 0.0;
            next_wz = 0.0;
 
-           relative_dock_pose_y_ =  relative_dock_pose->pose.position.y;
-
-           if(relative_dock_pose_y_ < -0.05){
+           if(y_laser_inDock_ < -0.05){
                dock_pos_detector_ = -1;
-           }else if(fabs(relative_dock_pose_y_) <= 0.05){
+           }else if(fabs(y_laser_inDock_) <= 0.05){
                dock_pos_detector_ = 0;
-           }else if(relative_dock_pose_y_ > 0.05){
+           }else if(y_laser_inDock_ > 0.05){
                dock_pos_detector_ = 1;
            }
 
            rotated_ = 0;
        }else if(fabs(rotated_) > 360+20) { // 转动超过一圈
-           next_state = RobotState::SCAN;
+           next_state = RobotState::SCAN2;
            next_vx = 0.0;
            next_wz = 0.0;
 
            rotated_ = 0;
        }else{
-           next_state = RobotState::SCAN;
+           next_state = RobotState::SCAN2;
            next_vx = 0.0;
-           next_wz = 0.21;
+           next_wz = 0.2;
        }
 
        RCLCPP_INFO(this->get_logger(), "scan2 rotated_= %.6f", rotated_);
@@ -225,7 +248,14 @@
         RobotState::State next_state;
         double next_vx;
         double next_wz;
+
         double rdp_rele = relative_dock_pose->relevance;
+        if(rdp_rele < THRESHOLD_RELEVANCE){
+            DOCK_VALID = true;
+        }else{
+            DOCK_VALID = false;
+        }
+
         int wall_size = relative_wall_pose->size;
         if(wall_size > 50){
             WALL_VALID = true;
@@ -236,11 +266,8 @@
         double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
         double wall_pos_yaw = tf2::getYaw(relative_wall_pose->pose.orientation)*180/M_PI;
 
-        if(rdp_rele < THRESHOLD_RELEVANCE){
-            DOCK_VALID = true;
-        }else{
-            DOCK_VALID = false;
-        }
+
+        RCLCPP_INFO(this->get_logger(), "get_parallel dock_pos_yaw= %.6f,  wall_pos_yaw=%.6f", dock_pos_yaw, wall_pos_yaw);
 
         // if(DOCK_VALID == true && fabs(wall_pos_yaw - 90) < 5)
         if(WALL_VALID == true && fabs(wall_pos_yaw - 90) < 5)
@@ -276,6 +303,14 @@
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.2;
+        }else if(dock_pos_detector_ > 0){
+            next_state = RobotState::GET_PARALLEL;
+            next_vx = 0.0;
+            next_wz = -0.2;
+        }else if(dock_pos_detector_ < 0){
+            next_state = RobotState::GET_PARALLEL;
+            next_vx = 0.0;
+            next_wz = 0.2;
         }
         else{
             next_state = RobotState::GET_PARALLEL;
@@ -293,17 +328,19 @@
         RobotState::State next_state;
         double next_vx;
         double next_wz;
-        
+
+        RCLCPP_INFO(this->get_logger(), "---------------move_align y_laser_inDock_= %.6f", y_laser_inDock_);
+
         linear_ += linear_update;
-        if(linear_ > 0.6*fabs(relative_dock_pose_y_)){
+        if(linear_ > 0.6*fabs(y_laser_inDock_)){
             next_state = RobotState::SCAN2;
             next_vx = 0.0;
             next_wz = 0.0;
 
             linear_ = 0;
-        }else if(linear_ < 0.6*fabs(relative_dock_pose_y_)){
+        }else if(linear_ < 0.6*fabs(y_laser_inDock_)){
             next_state = RobotState::MOVE_ALIGN;
-            next_vx = 0.2;
+            next_vx = 0.1;
             next_wz = 0.0;
         }
 

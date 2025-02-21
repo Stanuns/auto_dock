@@ -51,7 +51,7 @@ public:
     RobotState::State getState() const { return state_; }
     std::string getStateStr() const { return state_str_; }
     void update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
-                const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr wall_pose);
+                const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose);
     void publishCmd(const double &vx, const double &wz);
 
 
@@ -103,6 +103,7 @@ private:
     int docked_in_count_;
     int to_last_dock_count_;
     int count_pae_;
+    int to_find_wall_;
 
     RobotState::State state_;
     std::string state_str_;
@@ -115,7 +116,9 @@ private:
     bool DOCK_VALID;
     bool WALL_VALID;
     bool IfFirstTime;
-    double relative_dock_pose_y_;
+    // double relative_dock_pose_y_;
+    double x_laser_inDock_;
+    double y_laser_inDock_;
 
 };
 

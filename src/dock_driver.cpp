@@ -79,6 +79,9 @@ void DockDriver::updateVelocity(double& yaw_update, double& linear_update, const
         case RobotState::GET_PARALLEL:
             get_parallel(new_state, new_vx, new_wz, relative_dock_pose, relative_wall_pose);
             break;
+        case RobotState::MOVE_ALIGN:
+            move_align(new_state, new_vx, new_wz, linear_update);
+            break;
         case RobotState::POSITION_ALIGN:
             position_align(new_state, new_vx, new_wz, relative_dock_pose);
             break;
