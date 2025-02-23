@@ -31,6 +31,7 @@
         nvx = 0;
         nwz = NEXT_WZ;
         to_find_wall_ = 0;
+        wall_size_threshold_ = 40;
         
     }
 
@@ -50,9 +51,9 @@
         double next_wz;
 
         double wall_size = relative_wall_pose->size;
-        double wall_pos_yaw = tf2::getYaw(relative_wall_pose->pose.orientation)*180/M_PI;
+        double wall_pos_yaw = tf2::getYaw(relative_wall_pose->pose.orientation);
 
-        if(wall_size > 50){
+        if(wall_size > wall_size_threshold_){
             WALL_VALID = true;
         }else{
             WALL_VALID = false;
@@ -60,7 +61,9 @@
 
         rotated_ += yaw_update;
 
-        if(WALL_VALID == true && ( fabs(wall_pos_yaw) < 5 || fabs(wall_pos_yaw - 180) < 5 || fabs(wall_pos_yaw - (-180)) < 5 )) //机器人正对着wall
+        RCLCPP_INFO(this->get_logger(), "------------------------------scan wall_pos_yaw= %.6f", wall_pos_yaw*180/M_PI);
+
+        if(WALL_VALID == true && ( fabs(wall_pos_yaw*180/M_PI) < 5 || fabs(wall_pos_yaw*180/M_PI - 180) < 5 || fabs(wall_pos_yaw*180/M_PI - (-180)) < 5 )) //机器人正对着wall
         {
             next_state = RobotState::FIND_WALL;
             
@@ -75,9 +78,8 @@
             next_vx = 0.0;
             next_wz = -0.3;
 
-            RCLCPP_INFO(this->get_logger(), "------------------------------scan wall_pos_yaw= %.6f", wall_pos_yaw);
-
-        }else if(fabs(rotated_) > 360+20) { // 转动超过一圈
+            rotated_ = 0;
+        }else if(fabs(rotated_*180/M_PI) > 360+20) { // 转动超过一圈
             next_state = RobotState::SCAN;
             next_vx = 0.0;
             next_wz = 0.0;
@@ -91,7 +93,7 @@
             to_find_wall_ = 0;
         }
 
-        RCLCPP_INFO(this->get_logger(), "scan rotated_= %.6f", rotated_);
+        RCLCPP_INFO(this->get_logger(), "scan rotated_= %.6f", rotated_*180/M_PI);
         nstate = next_state;
         nvx = next_vx;
         nwz = next_wz;
@@ -105,7 +107,7 @@
 
         double wall_size = relative_wall_pose->size;
 
-        if(wall_size > 50){
+        if(wall_size > wall_size_threshold_){
             WALL_VALID = true;
         }else{
             WALL_VALID = false;
@@ -148,7 +150,7 @@
        double next_wz;
 
        double rdp_rele = relative_dock_pose->relevance;
-       double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
+       double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation);
 
        if(rdp_rele < THRESHOLD_RELEVANCE){
            DOCK_VALID = true;
@@ -167,7 +169,7 @@
 
            //坐标系变换,将在laser坐标系中的原点(laser)变换到dock坐标系中
            x_laser_inDock_ = -relative_dock_pose->pose.position.x*cos(dock_pos_yaw) - relative_dock_pose->pose.position.y*sin(dock_pos_yaw);
-           y_laser_inDock_ = relative_dock_pose->pose.position.x*sin(dock_pos_yaw)- relative_dock_pose->pose.position.y*cos(dock_pos_yaw);
+           y_laser_inDock_ = relative_dock_pose->pose.position.x*sin(dock_pos_yaw) - relative_dock_pose->pose.position.y*cos(dock_pos_yaw);
            
            RCLCPP_INFO(this->get_logger(), "------scan2: dis_laserToDock= %.6f, y_laser_inDock_ = %.6f", dis_laserToDock, y_laser_inDock_);
 
@@ -176,15 +178,15 @@
            next_wz = 0.0;
 
            if(y_laser_inDock_ < -0.05){
-               dock_pos_detector_ = -1;
+               dock_pos_detector_ = 1;
            }else if(fabs(y_laser_inDock_) <= 0.05){
                dock_pos_detector_ = 0;
            }else if(y_laser_inDock_ > 0.05){
-               dock_pos_detector_ = 1;
+               dock_pos_detector_ = -1;
            }
 
            rotated_ = 0;
-       }else if(fabs(rotated_) > 360+20) { // 转动超过一圈
+       }else if(fabs(rotated_*180/M_PI) > 360+20) { // 转动超过一圈
            next_state = RobotState::SCAN2;
            next_vx = 0.0;
            next_wz = 0.0;
@@ -196,7 +198,7 @@
            next_wz = 0.2;
        }
 
-       RCLCPP_INFO(this->get_logger(), "scan2 rotated_= %.6f", rotated_);
+       RCLCPP_INFO(this->get_logger(), "scan2 rotated_= %.6f", rotated_*180/M_PI);
        nstate = next_state;
        nvx = next_vx;
        nwz = next_wz;
@@ -209,7 +211,7 @@
         double next_wz;
         double rdp_rele = relative_dock_pose->relevance;
 
-        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;//值区间[-180 180]
+        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation);//值区间[-180 180]
 
         if(rdp_rele < THRESHOLD_RELEVANCE){
             DOCK_VALID = true;
@@ -218,19 +220,19 @@
         }
 
         if(DOCK_VALID == true && dock_pos_detector_ == 0){
-            next_state = RobotState::DOCKING;
+            next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
             next_wz = 0.0;
         }else if(dock_pos_detector_ == -1){ //机器人在dock左边
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.0;
-            angle_parallel_ = -90; //-90 由于luxsharerobot雷达视场角的遮挡，故改为-65
+            // angle_parallel_ = -90; //-90 由于luxsharerobot雷达视场角的遮挡，故改为-65
         }else if(dock_pos_detector_ == 1){  //机器人在dock右边
             next_state = RobotState::GET_PARALLEL;
             next_vx = 0.0;
             next_wz = 0.0;
-            angle_parallel_ = 90; //90 由于luxsharerobot雷达视场角的遮挡，故改为65
+            // angle_parallel_ = 90; //90 由于luxsharerobot雷达视场角的遮挡，故改为65
         }else{
             next_state = RobotState::SCAN2;
             next_vx = 0.0;
@@ -257,20 +259,22 @@
         }
 
         int wall_size = relative_wall_pose->size;
-        if(wall_size > 50){
+        if(wall_size > wall_size_threshold_){
             WALL_VALID = true;
         }else{
             WALL_VALID = false;
         }
 
-        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
-        double wall_pos_yaw = tf2::getYaw(relative_wall_pose->pose.orientation)*180/M_PI;
+        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation);
+        double wall_pos_yaw = tf2::getYaw(relative_wall_pose->pose.orientation);
+        double wall_pos_y = relative_wall_pose->pose.position.y;
 
 
-        RCLCPP_INFO(this->get_logger(), "get_parallel dock_pos_yaw= %.6f,  wall_pos_yaw=%.6f", dock_pos_yaw, wall_pos_yaw);
+        RCLCPP_INFO(this->get_logger(), "-----get_parallel dock_pos_yaw= %.6f, wall_pos_yaw=%.6f, dock_pos_detector_=%d, wall_size=%d", 
+                                    dock_pos_yaw*180/M_PI, wall_pos_yaw*180/M_PI, dock_pos_detector_, wall_size);
 
         // if(DOCK_VALID == true && fabs(wall_pos_yaw - 90) < 5)
-        if(WALL_VALID == true && fabs(wall_pos_yaw - 90) < 5)
+        if(WALL_VALID == true && fabs(wall_pos_yaw*180/M_PI - 90) < 5 && ((dock_pos_detector_ > 0 && wall_pos_y < 0) || (dock_pos_detector_ < 0 && wall_pos_y > 0)))
         {
             if(to_move_align > 2){
                 next_state = RobotState::MOVE_ALIGN;
@@ -285,13 +289,13 @@
                 to_move_align++;
             }
 
-            next_vx = 0.1;
+            next_vx = 0.0;
 
             //对于wheeltec, luxshare机器人存在bug，在旋转之后，单独给一个线速度，会有一定旋转，需要给一个反向角速度。
             if(dock_pos_detector_ < 0){
-                next_wz = -0.6;
-            }else{
-                next_wz = 0.6;
+                next_wz = -0.8;
+            }else if(dock_pos_detector_ > 0){
+                next_wz = 0.8;
             }
             
 
@@ -332,13 +336,13 @@
         RCLCPP_INFO(this->get_logger(), "---------------move_align y_laser_inDock_= %.6f", y_laser_inDock_);
 
         linear_ += linear_update;
-        if(linear_ > 0.6*fabs(y_laser_inDock_)){
+        if(linear_ > 0.3*fabs(y_laser_inDock_)){
             next_state = RobotState::SCAN2;
             next_vx = 0.0;
             next_wz = 0.0;
 
             linear_ = 0;
-        }else if(linear_ < 0.6*fabs(y_laser_inDock_)){
+        }else if(linear_ < 0.3*fabs(y_laser_inDock_)){
             next_state = RobotState::MOVE_ALIGN;
             next_vx = 0.1;
             next_wz = 0.0;
@@ -357,7 +361,7 @@
         RobotState::State next_state;
         double next_vx;
         double next_wz;
-        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
+        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation);
 
         double rdp_rele = relative_dock_pose->relevance;
         if(rdp_rele < THRESHOLD_RELEVANCE){
@@ -424,7 +428,7 @@
         double next_vx;
         double next_wz;
         double rdp_rele = relative_dock_pose->relevance;
-        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
+        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation);
         if(rdp_rele < THRESHOLD_RELEVANCE){
             DOCK_VALID = true;
         }else{
@@ -433,65 +437,56 @@
 
         RCLCPP_INFO(this->get_logger(), "angle_align------>dock_pos_detector_=%d.", dock_pos_detector_);
 
-        if(DOCK_VALID == true && (fabs(dock_pos_yaw-0) < 10 || fabs(dock_pos_yaw-180) < 10 || fabs(dock_pos_yaw-(-180)) < 10))
+        if(DOCK_VALID == true && (fabs(dock_pos_yaw*180/M_PI-0) < 5 || fabs(dock_pos_yaw*180/M_PI-180) < 5 || fabs(dock_pos_yaw*180/M_PI-(-180)) < 5))
         {
-            if(to_docking_count_ >= 1){
+            if(to_docking_count_ >= 4){
 
-                if(fabs(dock_pos_yaw-0) < 10){
+                if(fabs(dock_pos_yaw*180/M_PI-0) < 5){
                     next_state = RobotState::DOCKING;
-                }else if(fabs(dock_pos_yaw-180) < 10 || fabs(dock_pos_yaw-(-180)) < 10){
+                }else if(fabs(dock_pos_yaw*180/M_PI-180) < 5 || fabs(dock_pos_yaw*180/M_PI-(-180)) < 5){
                     next_state = RobotState::LAST_DOCK;
                 }
                 
                 to_docking_count_ = 0;
-                angle_parallel_ = 0;
+                // angle_parallel_ = 0;
             }else{
                 next_state = RobotState::ANGLE_ALIGN;
                 to_docking_count_++;
             }
-            
 
-            next_vx = 0.1;
-
+            next_vx = 0.0;
             //对于wheeltec机器人存在bug，在旋转之后，单独给一个线速度，会有一定旋转，需要给一个反向角速度。
             if(dock_pos_detector_>0){
-                next_wz = -0.6;
+                next_wz = 0.8;
             }else if(dock_pos_detector_<0){
-                next_wz = 0.6;
+                next_wz = -0.8;
             }else{
-                next_wz = -0.6; //直接从SCAN->FIND_DOCK->ANGLE_ALIGN
+                next_wz = -1.2; //直接从SCAN->FIND_DOCK->ANGLE_ALIGN
             }
 
-            // //debug
-            // next_state = RobotState::ANGLE_ALIGN;
-            // next_vx = 0.0;
-            // next_wz = 0.0;
-
+        }
+        else if(to_docking_count_ >= 1){//对于wheeltec机器人存在bug，在旋转之后，单独给一个线速度，会有一定旋转，需要给一个反向角速度。
+            if(to_docking_count_>=4){
+                next_state = RobotState::ANGLE_ALIGN;
+            }
+            next_state = RobotState::DOCKING;
+            next_vx = 0.0;
             
-        }else if(DOCK_VALID == true && dock_pos_detector_ < 0){
-            next_state = RobotState::ANGLE_ALIGN;
-            next_vx = 0.0;
-            next_wz = -0.2;
-        }else if(DOCK_VALID == true && dock_pos_detector_ > 0){
-            next_state = RobotState::ANGLE_ALIGN;
-            next_vx = 0.0;
-            next_wz = 0.2;
+            if(dock_pos_detector_>0){
+                next_wz = 0.8;
+            }else if(dock_pos_detector_<0){
+                next_wz = -0.8;
+            }else{
+                next_wz = -1.2; //直接从SCAN->FIND_DOCK->ANGLE_ALIGN
+            }
+            to_docking_count_++;
         }
-        else if(dock_pos_detector_ < 0){
+        else{
             next_state = RobotState::ANGLE_ALIGN;
             next_vx = 0.0;
-            next_wz = -0.2;
-
-        }else if(dock_pos_detector_ > 0){
-            next_state = RobotState::ANGLE_ALIGN;
-            next_vx = 0.0;
-            next_wz = 0.2;
+            next_wz = 0.21;
+            to_docking_count_ = 0;
         }
-        // else{
-        //     next_state = RobotState::ANGLE_ALIGN;
-        //     next_vx = 0.0;
-        //     next_wz = 0.2;
-        // }
 
         nstate = next_state;
         nvx = next_vx;
@@ -507,7 +502,7 @@
         
         double dock_pos_x =  relative_dock_pose->pose.position.x;
         double dock_pos_y =  relative_dock_pose->pose.position.y;
-        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation)*180/M_PI;
+        double dock_pos_yaw = tf2::getYaw(relative_dock_pose->pose.orientation);
         double rdp_rele = relative_dock_pose->relevance;
         if(rdp_rele < THRESHOLD_RELEVANCE){
             DOCK_VALID = true;
@@ -517,26 +512,26 @@
 
         double wall_pos_x =  relative_wall_pose->pose.position.x;
         double wall_pos_y =  relative_wall_pose->pose.position.y;
-        double wall_pos_yaw = tf2::getYaw(relative_wall_pose->pose.orientation)*180/M_PI;
+        double wall_pos_yaw = tf2::getYaw(relative_wall_pose->pose.orientation);
         int wall_size = relative_wall_pose->size;
-        if(wall_size > 50){
+        if(wall_size > wall_size_threshold_){
             WALL_VALID = true;
         }else{
             WALL_VALID = false;
         }
 
-        RCLCPP_INFO(this->get_logger(), "docking, dock_pos_yaw=%.6f, wall_pos_yaw=%.6f", dock_pos_yaw, wall_pos_yaw);
+        RCLCPP_INFO(this->get_logger(), "----------docking, dock_pos_yaw=%.6f, wall_pos_yaw=%.6f, wall_pos_x=%.6f", dock_pos_yaw*180/M_PI, wall_pos_yaw*180/M_PI, wall_pos_x);
 
 
 
-        if(WALL_VALID == true && wall_pos_x > -0.5)
+        if(WALL_VALID == true && wall_pos_x > -0.2)
         {
-            next_state = RobotState::TURN_AROUND; //尾部对接需要，如头部对接，直接转到DOCKED_IN
+            next_state = RobotState::DOCKED_IN; //尾部对接需要，如头部对接，直接转到DOCKED_IN
             next_vx = 0.0;
             next_wz = 0.0;
 
             rotated_ = 0;
-        }else if(WALL_VALID == true && wall_pos_x < -0.5){ //需要借助红外
+        }else if(WALL_VALID == true && wall_pos_x < -0.2){ //需要借助红外
             next_state = RobotState::DOCKING;
             next_vx = 0.1;
             next_wz = 0.0;
@@ -570,7 +565,7 @@
 
         rotated_ += yaw_update;
 
-        if(rotated_ >= 183) //转动一圈
+        if(rotated_*180/M_PI >= 183) //转动一圈
         {
 
             if(to_last_dock_count_ > 4){

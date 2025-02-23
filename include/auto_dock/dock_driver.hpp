@@ -81,12 +81,16 @@ protected:
     //未被使用
     void position_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void position_align_extension(RobotState::State& state, double& vx, double& wz, double& linear_update);
-    void angle_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
 
+
+    void angle_align(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
     void docking(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
                     const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose);
+
+    //未被使用                
     void turn_around(RobotState::State& state, double& vx, double& wz, double& yaw_update);
     void last_dock(RobotState::State& state, double& vx, double& wz); //有红外传感器, 需增加该传感器信息
+
     void docked_in(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
 
 private:
@@ -119,6 +123,7 @@ private:
     // double relative_dock_pose_y_;
     double x_laser_inDock_;
     double y_laser_inDock_;
+    int wall_size_threshold_;
 
 };
 

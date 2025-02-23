@@ -28,10 +28,10 @@ DockDriver::DockDriver() :
     ROBOT_STATE_STR[6] = "MOVE_ALIGN";
     ROBOT_STATE_STR[7] = "POSITION_ALIGN"; //未被使用
     ROBOT_STATE_STR[8] = "POSITION_ALIGN_EXTENSION";//未被使用
-    ROBOT_STATE_STR[9] = "ANGLE_ALIGN";//未被使用
+    ROBOT_STATE_STR[9] = "ANGLE_ALIGN";
     ROBOT_STATE_STR[10] = "DOCKING";
-    ROBOT_STATE_STR[11] = "TURN_AROUND";
-    ROBOT_STATE_STR[12] = "LAST_DOCK";
+    ROBOT_STATE_STR[11] = "TURN_AROUND";//未被使用
+    ROBOT_STATE_STR[12] = "LAST_DOCK";//未被使用
     ROBOT_STATE_STR[13] = "DOCKED_IN";
 
     IfFirstTime = true;
@@ -137,12 +137,17 @@ void DockDriver::computePoseUpdate(double& yaw_update, double& linear_update, na
     }else{
         double yaw_current = tf2::getYaw(odom->pose.pose.orientation); //值区间[-180 180]
         yaw_update = yaw_current - tf2::getYaw(odom_priv_->pose.pose.orientation);
-        yaw_update = yaw_update*180/M_PI;
-        //值区间映射到[-180,180]
-        if(yaw_update < -180){ 
-            yaw_update = yaw_update + 360;
-        }else if(yaw_update > 180){
-            yaw_update = yaw_update - 360;
+        // yaw_update = yaw_update*180/M_PI;
+        // //值区间映射到[-180,180]
+        // if(yaw_update < -180){ 
+        //     yaw_update = yaw_update + 360;
+        // }else if(yaw_update > 180){
+        //     yaw_update = yaw_update - 360;
+        // }
+        if(yaw_update < -M_PI){
+            yaw_update = yaw_update + 2*M_PI;
+        }else if(yaw_update > M_PI){
+            yaw_update = yaw_update - 2*M_PI;
         }
 
         geometry_msgs::msg::Point linear_current = odom->pose.pose.position;

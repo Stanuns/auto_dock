@@ -109,7 +109,7 @@ private:
             // 计算直线的方向角
             double a = coefficients->values[3]; // 直线方程中的a
             double b = coefficients->values[4]; // 直线方程中的b
-            // double theta = (atan2(b, a) * 180) / M_PI; // 计算方向角
+            // double theta = atan2(b, a); // 计算方向角
             double theta = atan2(b, a) + M_PI/2; // 直线方向角逆时针旋转pi/2
             tf2::Quaternion q;
             q.setRPY(0, 0, theta); // 设置旋转角度

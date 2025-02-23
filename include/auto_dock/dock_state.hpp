@@ -14,10 +14,10 @@ struct RobotState {
         MOVE_ALIGN,
         POSITION_ALIGN, //未被使用
         POSITION_ALIGN_EXTENSION, //未被使用
-        ANGLE_ALIGN,//未被使用
+        ANGLE_ALIGN,
         DOCKING,
-        TURN_AROUND, //尾部对接需要
-        LAST_DOCK,   //尾部对接需要
+        TURN_AROUND, //尾部对接需要 //未被使用
+        LAST_DOCK,   //尾部对接需要 //未被使用
         DOCKED_IN,
     };
 };
