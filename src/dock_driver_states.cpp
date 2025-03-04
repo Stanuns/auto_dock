@@ -926,7 +926,7 @@
         unsigned char midback   = ir->rec_midback;
         unsigned char right = ir->rec_right;
 
-        if(docking_count_ > 20) 
+        if(docking_count_ > 40) 
         {
             next_state = RobotState::DOCKED_IN_IR;
             next_vx = 0.0;
@@ -940,6 +940,12 @@
             next_wz = 0.0;
 
             docking_count_++;
+        }else{
+            next_state = RobotState::DOCKING_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+
+            // docking_count_++;
         }
 
         nstate = next_state;
