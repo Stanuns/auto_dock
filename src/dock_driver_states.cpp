@@ -14,6 +14,7 @@
      * Shared variable
      *  @dock_pos_detector_   表示dock的位置. -1代表robot在dock的左边; 0代表robot在dock的中间; 1代表robot在dock的右边
      *  @rotated_    表示robot转动了多少.
+     *  @dock_detecotr_   表示dock的位置. 正代表robot在dock的右边
     ******************/
     void DockDriver::idle(RobotState::State& nstate, double& nvx, double& nwz) {
         dock_pos_detector_ = -2;
@@ -27,12 +28,17 @@
         count_pae_ = 0;
         rotated_ = 0.0;
         linear_ = 0.0;
-        nstate = RobotState::SCAN;
+        // nstate = RobotState::SCAN;
+        nstate = RobotState::SCAN_IR;
         nvx = 0;
         nwz = NEXT_WZ;
         to_find_wall_ = 0;
         wall_size_threshold_ = 40;
-        
+
+        dock_detector_ = 0;  
+        get_ir_left_ = 0;
+        get_ir_right_  = 0;
+        docking_count_ = 0;
     }
 
 
@@ -642,6 +648,312 @@
             next_vx = 0.0;
             next_wz = 0.0;
         }
+
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;
+    }
+
+    
+    //infra red dock
+    void DockDriver::scan_ir(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, 
+        double& yaw_update){
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        unsigned char left  = ir->rec_left;
+        unsigned char midback   = ir->rec_midback;
+        unsigned char right = ir->rec_right;
+
+        rotated_ += yaw_update;
+
+        if(midback == DockStationIRState::CENTER)
+        {
+            next_state = RobotState::ALIGNED_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+            dock_detector_ = 0;
+            rotated_ = 0;
+        }
+        // robot is located left side of dock
+        else if(midback == DockStationIRState::LEFT || right == DockStationIRState::LEFT){
+            dock_detector_--;
+            next_state = RobotState::SCAN_IR;
+            next_vx = 0.0;
+            next_wz = 0.2;
+        }
+        // robot is located right side of dock
+        else if(midback == DockStationIRState::RIGHT || left == DockStationIRState::RIGHT){
+            dock_detector_++;
+            next_state = RobotState::SCAN_IR;
+            next_vx = 0.0;
+            next_wz = 0.2;
+        }
+        else if(fabs(rotated_*180/M_PI) > 360+20) //在转了一圈之后 RobotState切换到FIND_IR
+        {
+            next_state = RobotState::FIND_IR;
+            next_vx = 0;
+            next_wz = 0.2;
+            rotated_ = 0;
+        }
+        else { // if mid sensor does not see anything, rotate fast
+            next_state = RobotState::SCAN_IR;
+            next_vx = 0.0;
+            next_wz = 0.2;
+        }
+
+        RCLCPP_INFO(this->get_logger(), "--scan_ir --dock_detector_: %d", dock_detector_);
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;
+
+    }
+    void DockDriver::find_ir(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir){
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        unsigned char left  = ir->rec_left;
+        unsigned char midback   = ir->rec_midback;
+        unsigned char right = ir->rec_right;
+
+        RCLCPP_INFO(this->get_logger(), "--find_ir --dock_detector_: %d", dock_detector_);
+        if(dock_detector_ > 0) // robot is located in right side of dock
+        {
+            if(left == DockStationIRState::RIGHT || midback == DockStationIRState::RIGHT) {
+                next_state = RobotState::GET_IR;
+                next_vx = 0.1;
+                next_wz = 0.0;
+            }
+            else {
+                next_state = RobotState::FIND_IR;
+                next_vx = 0.0;
+                next_wz = 0.2;
+            }
+        }
+        else if(dock_detector_ < 0 ) // robot is located in left side of dock
+        {
+            if(right == DockStationIRState::LEFT || midback == DockStationIRState::LEFT)
+            {
+                next_state = RobotState::GET_IR;
+                next_vx = 0.1;
+                next_wz = 0.0;
+            }
+            else {
+                next_state = RobotState::FIND_IR;
+                next_vx = 0.0;
+                next_wz = 0.2;
+            }
+        }
+        else{//机器人在中间区域逻辑需要完善
+            if(midback == DockStationIRState::CENTER)
+            {
+                next_state = RobotState::ALIGNED_IR;
+                next_vx = 0.0;
+                next_wz = 0.0;
+                dock_detector_ = 0;
+                rotated_ = 0;
+            }
+            else
+            {
+                next_state = RobotState::FIND_IR;
+                next_vx = 0.0;
+                next_wz = 0.2;
+            }
+        }
+
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;
+    }
+    void DockDriver::get_ir(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir){
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        unsigned char left  = ir->rec_left;
+        unsigned char midback   = ir->rec_midback;
+        unsigned char right = ir->rec_right;
+
+        if(dock_detector_ > 0) { // robot is located in right side of dock
+        //    if (left == DockStationIRState::LEFT) {
+            if (left == DockStationIRState::CENTER){
+                get_ir_left_ = 0;
+                dock_detector_ = 0;
+                rotated_ = 0;
+                next_state = RobotState::SCAN_TO_ALIGN_IR;
+                next_vx = 0;
+                next_wz = 0.2;
+            }
+            else{
+                // get_ir_left_++;
+                // if(get_ir_left_ > 20){
+                //     dock_detector_ = 0;
+                //     rotated_ = 0;
+                //     next_state = RobotState::GO_BACK;
+                //     next_vx = -0.1;
+                //     next_wz = 0;
+                //     get_ir_left_ = 0;
+                // }
+                // else{
+                next_state = RobotState::GET_IR;
+                next_vx = 0.1;
+                next_wz = 0.0;
+                // }
+            }
+        }
+        else if(dock_detector_ < 0) { // robot is located left side of dock
+            if (right == DockStationIRState::CENTER){
+                get_ir_right_ = 0;
+                dock_detector_ = 0;
+                rotated_ = 0;
+                next_state = RobotState::SCAN_TO_ALIGN_IR;
+                next_vx = 0;
+                next_wz = -0.2;
+            }
+            else {
+                // get_ir_right_++;
+                // if(get_ir_right_ > 20){
+                //     dock_detector_ = 0;
+                //     rotated_ = 0;
+                //     next_state = RobotState::GO_BACK;
+                //     next_vx = -0.1;
+                //     next_wz = 0;
+                //     get_ir_right_ = 0;
+                // }
+                // else{
+                next_state = RobotState::GET_IR;
+                next_vx = 0.1;
+                next_wz = 0.0;
+                // }
+            }
+        }
+        else{
+            next_state = RobotState::SCAN_IR;
+            next_vx = 0.0;
+            next_wz = 0.2;
+        }
+
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;
+    }
+    void DockDriver::scan_to_align_ir(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, 
+        double& yaw_update){
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        unsigned char left  = ir->rec_left;
+        unsigned char midback   = ir->rec_midback;
+        unsigned char right = ir->rec_right;
+
+        rotated_ += yaw_update;
+        if(midback == DockStationIRState::CENTER)
+        {
+            next_state = RobotState::ALIGNED_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+            dock_detector_ = 0;
+            rotated_ = 0;
+        }
+        // else if(left == DockStationIRState::CENTER)
+        // {
+        //     next_state = RobotState::SCAN_IR;
+        //     next_vx = 0.0;
+        //     next_wz = 0.2;
+        //     rotated_ = 0;
+        // }
+        else if(fabs(rotated_*180/M_PI) > 360+20)
+        {
+            next_state = RobotState::SCAN_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+            rotated_ = 0;
+        }
+        else {
+            next_state = RobotState::SCAN_TO_ALIGN_IR;
+            next_vx = 0.0;
+            next_wz = -0.2;
+        }
+
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;
+    }
+    void DockDriver::aligned_ir(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, 
+        double& yaw_update){
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        unsigned char left  = ir->rec_left;
+        unsigned char midback   = ir->rec_midback;
+        unsigned char right = ir->rec_right;
+        if(midback  == DockStationIRState::CENTER)
+        {
+            next_state = RobotState::DOCKING_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+        }
+        else if(midback == DockStationIRState::LEFT) {
+            next_state = RobotState::SCAN_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+        }
+        else if(midback == DockStationIRState::RIGHT){
+            next_state = RobotState::SCAN_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+        }
+        else {
+            next_state = RobotState::ALIGNED_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+        }
+
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;   
+    }
+    void DockDriver::docking_ir(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir){
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        unsigned char left  = ir->rec_left;
+        unsigned char midback   = ir->rec_midback;
+        unsigned char right = ir->rec_right;
+
+        if(docking_count_ > 20) 
+        {
+            next_state = RobotState::DOCKED_IN_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+
+            docking_count_ = 0;
+        }
+        else if(midback == DockStationIRState::CENTER){
+            next_state = RobotState::DOCKING_IR;
+            next_vx = -0.1;
+            next_wz = 0.0;
+
+            docking_count_++;
+        }
+
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;
+    }
+    void DockDriver::docked_in_ir(RobotState::State& nstate, double& nvx, double& nwz){
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        next_state = RobotState::DOCKED_IN_IR;
+        next_vx = 0.0;
+        next_wz = 0.0;
 
         nstate = next_state;
         nvx = next_vx;

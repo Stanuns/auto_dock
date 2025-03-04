@@ -19,6 +19,7 @@
 #include "robot_interfaces/msg/dock_pose_stamped.hpp" 
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
+#include "robot_interfaces/msg/dock_infra_red.hpp"
 
 
 namespace auto_dock
@@ -30,12 +31,18 @@ public:
   using GoalHandleAutoDock = rclcpp_action::ServerGoalHandle<AutoDock>;
 
   message_filters::Subscriber<nav_msgs::msg::Odometry> odom_sub_;
-  message_filters::Subscriber<robot_interfaces::msg::DockPoseStamped> relative_dock_pose_sub_;
-  message_filters::Subscriber<robot_interfaces::msg::WallPoseStamped> relative_wall_pose_sub_;
+  // message_filters::Subscriber<robot_interfaces::msg::DockPoseStamped> relative_dock_pose_sub_;
+  // message_filters::Subscriber<robot_interfaces::msg::WallPoseStamped> relative_wall_pose_sub_;
+  // typedef message_filters::sync_policies::ApproximateTime<
+  //       nav_msgs::msg::Odometry,
+  //       robot_interfaces::msg::DockPoseStamped,
+  //       robot_interfaces::msg::WallPoseStamped
+  // > SyncPolicy;
+  // message_filters::Synchronizer<SyncPolicy> sync_;
+  message_filters::Subscriber<robot_interfaces::msg::DockInfraRed> dock_ir_sub_;
   typedef message_filters::sync_policies::ApproximateTime<
-        nav_msgs::msg::Odometry,
-        robot_interfaces::msg::DockPoseStamped,
-        robot_interfaces::msg::WallPoseStamped
+      nav_msgs::msg::Odometry,
+      robot_interfaces::msg::DockInfraRed
   > SyncPolicy;
   message_filters::Synchronizer<SyncPolicy> sync_;
 
@@ -45,7 +52,8 @@ public:
   AUTO_DOCK_PUBLIC
   explicit AutoDockActionServer()
   : Node("auto_dock_action_server"),
-  sync_(SyncPolicy(10), odom_sub_, relative_dock_pose_sub_, relative_wall_pose_sub_)
+  // sync_(SyncPolicy(10), odom_sub_, relative_dock_pose_sub_, relative_wall_pose_sub_)
+  sync_(SyncPolicy(10), odom_sub_, dock_ir_sub_)
   {
     using namespace std::placeholders;
 
@@ -59,8 +67,9 @@ public:
     dock_drive_ = new DockDriver();
 
     odom_sub_.subscribe(this, "/odom"); //odom_combined
-    relative_dock_pose_sub_.subscribe(this, "/relative_dock_pose");
-    relative_wall_pose_sub_.subscribe(this, "/relative_wall_pose");
+    // relative_dock_pose_sub_.subscribe(this, "/relative_dock_pose");
+    // relative_wall_pose_sub_.subscribe(this, "/relative_wall_pose");
+    dock_ir_sub_.subscribe(this, "/dock_ir");
     // sync_.registerCallback(&AutoDockActionServer::syncCallback, this);
 
     RCLCPP_INFO(this->get_logger(), "AutoDockActionServer initialize done......");
@@ -70,8 +79,9 @@ public:
     delete dock_drive_;
   }
 
-  void syncCallback(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
-                      const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose)
+  // void syncCallback(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
+  //                     const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose)
+  void syncCallback(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr dock_ir)
   {
     RCLCPP_INFO(this->get_logger(), "Executing goal");
     // RCLCPP_INFO(this->get_logger(), "syncCallback......");
@@ -89,12 +99,13 @@ public:
     if(goal->req_state == CHARGED && accepted_goal_handle->is_active()){
 
 
-      dock_drive_->update(odom, relative_dock_pose, relative_wall_pose);
+      // dock_drive_->update(odom, relative_dock_pose, relative_wall_pose);
+      dock_drive_->update_ir(odom, dock_ir);
 
-      if (dock_drive_->getState() == RobotState::DOCKED_IN) {
+      if (dock_drive_->getState() == RobotState::DOCKED_IN_IR) {
           sleep(1);
 
-          result->res_state = "DOCKED_IN";
+          result->res_state = "DOCKED_IN_IR";
 
           accepted_goal_handle->succeed(result);
           delete dock_drive_;

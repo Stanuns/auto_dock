@@ -19,6 +19,23 @@ struct RobotState {
         TURN_AROUND, //尾部对接需要 //未被使用
         LAST_DOCK,   //尾部对接需要 //未被使用
         DOCKED_IN,
+
+        SCAN_IR,
+        FIND_IR,
+        GET_IR,
+        SCAN_TO_ALIGN_IR,
+        ALIGNED_IR,
+        DOCKING_IR,
+        DOCKED_IN_IR,
+    };
+};
+
+struct DockStationIRState {
+    enum State {
+        INVISIBLE=0, //没有接收到信号
+        LEFT=1,   //接收到dock的左边信号
+        CENTER=2, //接收到dock的中间信号
+        RIGHT=3,  //接收到dock的右边信号
     };
 };
 

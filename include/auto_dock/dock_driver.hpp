@@ -24,6 +24,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include "robot_interfaces/msg/wall_pose_stamped.hpp"
+#include "robot_interfaces/msg/dock_infra_red.hpp"
 
 
 #ifndef SRC_DOCK_DRIVE_HPP
@@ -52,6 +53,7 @@ public:
     std::string getStateStr() const { return state_str_; }
     void update(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose,
                 const robot_interfaces::msg::WallPoseStamped::ConstSharedPtr relative_wall_pose);
+    void update_ir(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
     void publishCmd(const double &vx, const double &wz);
 
 
@@ -93,10 +95,23 @@ protected:
 
     void docked_in(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockPoseStamped::ConstSharedPtr relative_dock_pose);
 
+    //InfraRed对接
+    void updateVelocity_ir(double& yaw_update, double& linear_update, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
+    void scan_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& yaw_update);
+    void find_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
+    void get_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
+    void scan_to_align_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& yaw_update);
+    void aligned_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& yaw_update);
+    void docking_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
+    void docked_in_ir(RobotState::State& state, double& vx, double& wz);
+
+
+
 private:
     Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_publisher_;
     // Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     int dock_pos_detector_;
+    int dock_detector_;
     double rotated_; //角度
     double linear_; //线运动距离
     double angle_parallel_;
@@ -125,6 +140,9 @@ private:
     double y_laser_inDock_;
     int wall_size_threshold_;
 
+    int get_ir_left_;
+    int get_ir_right_;
+    int docking_count_;
 };
 
 

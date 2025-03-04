@@ -14,7 +14,7 @@ DockDriver::DockDriver() :
         ,state_(RobotState::IDLE)
         ,state_str_("IDLE")
         ,vx_(0.0), wz_(0.0)
-        ,ROBOT_STATE_STR(14)
+        ,ROBOT_STATE_STR(21)
         ,DOCK_VALID(false)
         ,WALL_VALID(false)
 {
@@ -33,6 +33,14 @@ DockDriver::DockDriver() :
     ROBOT_STATE_STR[11] = "TURN_AROUND";//未被使用
     ROBOT_STATE_STR[12] = "LAST_DOCK";//未被使用
     ROBOT_STATE_STR[13] = "DOCKED_IN";
+
+    ROBOT_STATE_STR[14] = "SCAN_IR";
+    ROBOT_STATE_STR[15] = "FIND_IR";
+    ROBOT_STATE_STR[16] = "GET_IR";
+    ROBOT_STATE_STR[17] = "SCAN_TO_ALIGN_IR";
+    ROBOT_STATE_STR[18] = "ALIGNED_IR";
+    ROBOT_STATE_STR[19] = "DOCKING_IR";
+    ROBOT_STATE_STR[20] = "DOCKED_IN_IR";
 
     IfFirstTime = true;
 }
@@ -102,7 +110,7 @@ void DockDriver::updateVelocity(double& yaw_update, double& linear_update, const
             break;
         case RobotState::DOCKED_IN:
             docked_in(new_state, new_vx, new_wz, relative_dock_pose);
-            break;
+            break;  
         default:
             RCLCPP_INFO(this->get_logger(), "-----wrong state-----");
             break;
@@ -110,6 +118,57 @@ void DockDriver::updateVelocity(double& yaw_update, double& linear_update, const
 
     setStateVel(new_state, new_vx, new_wz);
     state_str_ = ROBOT_STATE_STR[(unsigned int)new_state];
+}
+
+void DockDriver::update_ir(nav_msgs::msg::Odometry::SharedPtr odom, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir)
+{
+    // ecl::LegacyPose2D<double> pose_update;
+    double yaw_update, linear_update;
+    computePoseUpdate(yaw_update, linear_update, odom);
+    updateVelocity_ir(yaw_update, linear_update, ir);
+    RCLCPP_INFO(this->get_logger(), "cmd update, vx_=%.6f. wz_=%.6f. state_=%s", vx_, wz_, state_str_.c_str());
+    publishCmd(vx_,wz_);
+}
+void DockDriver::updateVelocity_ir(double& yaw_update, double& linear_update, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir){
+    RobotState::State current_state, new_state;
+    double new_vx = 0.0;
+    double new_wz = 0.0;
+
+    // determine the current state based on relative_dock_pose and the previous state
+    current_state = new_state = state_;
+    switch((unsigned int)current_state) {
+        case RobotState::IDLE:
+            idle(new_state, new_vx, new_wz);
+            break;
+        case RobotState::SCAN_IR:
+            scan_ir(new_state, new_vx, new_wz, ir, yaw_update);
+            break;
+        case RobotState::FIND_IR:
+            find_ir(new_state, new_vx, new_wz, ir);
+            break;    
+        case RobotState::GET_IR:
+            get_ir(new_state, new_vx, new_wz, ir);
+            break;  
+        case RobotState::SCAN_TO_ALIGN_IR:
+            scan_to_align_ir(new_state, new_vx, new_wz, ir, yaw_update);
+            break;
+        case RobotState::ALIGNED_IR:
+            aligned_ir(new_state, new_vx, new_wz, ir, yaw_update);
+            break;    
+        case RobotState::DOCKING_IR:
+            docking_ir(new_state, new_vx, new_wz, ir);
+            break; 
+        case RobotState::DOCKED_IN_IR:
+            docked_in_ir(new_state, new_vx, new_wz);
+            break;  
+        default:
+            RCLCPP_INFO(this->get_logger(), "-----wrong state-----");
+            break;
+    }
+
+    setStateVel(new_state, new_vx, new_wz);
+    state_str_ = ROBOT_STATE_STR[(unsigned int)new_state];
+
 }
 
 void DockDriver::publishCmd(const double &vx, const double &wz){
