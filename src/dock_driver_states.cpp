@@ -721,9 +721,9 @@
         RCLCPP_INFO(this->get_logger(), "--find_ir --dock_detector_: %d", dock_detector_);
         if(dock_detector_ > 0) // robot is located in right side of dock
         {
-            if(left == DockStationIRState::RIGHT || midback == DockStationIRState::RIGHT) {
+            if(right == DockStationIRState::RIGHT) { //|| midback == DockStationIRState::RIGHT
                 next_state = RobotState::GET_IR;
-                next_vx = 0.1;
+                next_vx = 0.0;
                 next_wz = 0.0;
             }
             else {
@@ -734,16 +734,16 @@
         }
         else if(dock_detector_ < 0 ) // robot is located in left side of dock
         {
-            if(right == DockStationIRState::LEFT || midback == DockStationIRState::LEFT)
+            if(left == DockStationIRState::LEFT) // || midback == DockStationIRState::LEFT
             {
                 next_state = RobotState::GET_IR;
-                next_vx = 0.1;
+                next_vx = 0.0;
                 next_wz = 0.0;
             }
             else {
                 next_state = RobotState::FIND_IR;
                 next_vx = 0.0;
-                next_wz = 0.2;
+                next_wz = -0.2;
             }
         }
         else{//机器人在中间区域逻辑需要完善
@@ -778,8 +778,8 @@
 
         if(dock_detector_ > 0) { // robot is located in right side of dock
         //    if (left == DockStationIRState::LEFT) {
-            if (left == DockStationIRState::CENTER){
-                get_ir_left_ = 0;
+            if (right == DockStationIRState::CENTER){
+                get_ir_right_ = 0;
                 dock_detector_ = 0;
                 rotated_ = 0;
                 next_state = RobotState::SCAN_TO_ALIGN_IR;
@@ -787,32 +787,6 @@
                 next_wz = 0.2;
             }
             else{
-                // get_ir_left_++;
-                // if(get_ir_left_ > 20){
-                //     dock_detector_ = 0;
-                //     rotated_ = 0;
-                //     next_state = RobotState::GO_BACK;
-                //     next_vx = -0.1;
-                //     next_wz = 0;
-                //     get_ir_left_ = 0;
-                // }
-                // else{
-                next_state = RobotState::GET_IR;
-                next_vx = 0.1;
-                next_wz = 0.0;
-                // }
-            }
-        }
-        else if(dock_detector_ < 0) { // robot is located left side of dock
-            if (right == DockStationIRState::CENTER){
-                get_ir_right_ = 0;
-                dock_detector_ = 0;
-                rotated_ = 0;
-                next_state = RobotState::SCAN_TO_ALIGN_IR;
-                next_vx = 0;
-                next_wz = -0.2;
-            }
-            else {
                 // get_ir_right_++;
                 // if(get_ir_right_ > 20){
                 //     dock_detector_ = 0;
@@ -824,7 +798,33 @@
                 // }
                 // else{
                 next_state = RobotState::GET_IR;
-                next_vx = 0.1;
+                next_vx = -0.1;
+                next_wz = 0.0;
+                // }
+            }
+        }
+        else if(dock_detector_ < 0) { // robot is located left side of dock
+            if (left == DockStationIRState::CENTER){
+                get_ir_left_ = 0;
+                dock_detector_ = 0;
+                rotated_ = 0;
+                next_state = RobotState::SCAN_TO_ALIGN_IR;
+                next_vx = 0;
+                next_wz = -0.2;
+            }
+            else {
+                // get_ir_left_++;
+                // if(get_ir_left_ > 20){
+                //     dock_detector_ = 0;
+                //     rotated_ = 0;
+                //     next_state = RobotState::GO_BACK;
+                //     next_vx = -0.1;
+                //     next_wz = 0;
+                //     get_ir_left_ = 0;
+                // }
+                // else{
+                next_state = RobotState::GET_IR;
+                next_vx = -0.1;
                 next_wz = 0.0;
                 // }
             }
@@ -832,7 +832,7 @@
         else{
             next_state = RobotState::SCAN_IR;
             next_vx = 0.0;
-            next_wz = 0.2;
+            next_wz = 0.0;
         }
 
         nstate = next_state;
