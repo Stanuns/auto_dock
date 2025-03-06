@@ -143,6 +143,7 @@ private:
     int get_ir_left_;
     int get_ir_right_;
     int docking_count_;
+    int to_docking_ir;
 };
 
 

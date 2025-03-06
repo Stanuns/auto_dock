@@ -39,6 +39,7 @@
         get_ir_left_ = 0;
         get_ir_right_  = 0;
         docking_count_ = 0;
+        to_docking_ir = 0;
     }
 
 
@@ -854,7 +855,7 @@
         {
             next_state = RobotState::ALIGNED_IR;
             next_vx = 0.0;
-            next_wz = 0.0;
+            next_wz = 0.2;
             dock_detector_ = 0;
             rotated_ = 0;
         }
@@ -875,7 +876,7 @@
         else {
             next_state = RobotState::SCAN_TO_ALIGN_IR;
             next_vx = 0.0;
-            next_wz = -0.2;
+            next_wz = 0.2;
         }
 
         nstate = next_state;
@@ -895,7 +896,7 @@
         {
             next_state = RobotState::DOCKING_IR;
             next_vx = 0.0;
-            next_wz = 0.0;
+            next_wz = 0.0;   
         }
         else if(midback == DockStationIRState::LEFT) {
             next_state = RobotState::SCAN_IR;
@@ -926,26 +927,41 @@
         unsigned char midback   = ir->rec_midback;
         unsigned char right = ir->rec_right;
 
-        if(docking_count_ > 40) 
+        if(docking_count_ > 60) 
         {
             next_state = RobotState::DOCKED_IN_IR;
             next_vx = 0.0;
             next_wz = 0.0;
 
             docking_count_ = 0;
+            to_docking_ir = 0;
         }
         else if(midback == DockStationIRState::CENTER){
-            next_state = RobotState::DOCKING_IR;
-            next_vx = -0.1;
-            next_wz = 0.0;
-
+            if(to_docking_ir > 20){
+                next_state = RobotState::DOCKING_IR;
+                next_vx = -0.25;
+                next_wz = 0.0;
+            }else{
+                next_state = RobotState::DOCKING_IR;
+                next_vx = 0.0;
+                next_wz = -0.6;
+                to_docking_ir++;
+            }
+            
             docking_count_++;
         }else{
-            next_state = RobotState::DOCKING_IR;
-            next_vx = 0.0;
-            next_wz = 0.0;
+            if(to_docking_ir > 20){
+                next_state = RobotState::DOCKING_IR;
+                next_vx = -0.1;
+                next_wz = 0.0;
+            }else{
+                next_state = RobotState::DOCKING_IR;
+                next_vx = 0.0;
+                next_wz = -0.6;
+                to_docking_ir++;
+            }
 
-            // docking_count_++;
+            docking_count_++;
         }
 
         nstate = next_state;
