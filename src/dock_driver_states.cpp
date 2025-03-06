@@ -39,7 +39,10 @@
         get_ir_left_ = 0;
         get_ir_right_  = 0;
         docking_count_ = 0;
-        to_docking_ir = 0;
+        to_docking_ir_ = 0;
+        get_ir_return_count_ = 0;
+        aligned_ir_change = true;
+        to_get_ir_ = 0;
     }
 
 
@@ -678,14 +681,14 @@
             rotated_ = 0;
         }
         // robot is located left side of dock
-        else if(midback == DockStationIRState::LEFT || right == DockStationIRState::LEFT){
+        else if(midback == DockStationIRState::LEFT || right == DockStationIRState::LEFT || left == DockStationIRState::LEFT){
             dock_detector_--;
             next_state = RobotState::SCAN_IR;
             next_vx = 0.0;
             next_wz = 0.2;
         }
         // robot is located right side of dock
-        else if(midback == DockStationIRState::RIGHT || left == DockStationIRState::RIGHT){
+        else if(midback == DockStationIRState::RIGHT || left == DockStationIRState::RIGHT || right == DockStationIRState::RIGHT){
             dock_detector_++;
             next_state = RobotState::SCAN_IR;
             next_vx = 0.0;
@@ -733,7 +736,7 @@
                 next_wz = 0.2;
             }
         }
-        else if(dock_detector_ < 0 ) // robot is located in left side of dock
+        else if(dock_detector_ < 0) // robot is located in left side of dock
         {
             if(left == DockStationIRState::LEFT) // || midback == DockStationIRState::LEFT
             {
@@ -768,7 +771,9 @@
         nvx = next_vx;
         nwz = next_wz;
     }
-    void DockDriver::get_ir(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir){
+    void DockDriver::get_ir(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir,
+        double& linear_update){
+
         RobotState::State next_state;
         double next_vx;
         double next_wz;
@@ -777,36 +782,48 @@
         unsigned char midback   = ir->rec_midback;
         unsigned char right = ir->rec_right;
 
+        linear_ += linear_update;
+
         if(dock_detector_ > 0) { // robot is located in right side of dock
         //    if (left == DockStationIRState::LEFT) {
             if (right == DockStationIRState::CENTER){
-                get_ir_right_ = 0;
+                // get_ir_right_ = 0;
+                linear_ = 0;
                 dock_detector_ = 0;
                 rotated_ = 0;
                 next_state = RobotState::SCAN_TO_ALIGN_IR;
                 next_vx = 0;
                 next_wz = 0.2;
+                to_get_ir_ = 0;
             }
             else{
                 // get_ir_right_++;
-                // if(get_ir_right_ > 20){
-                //     dock_detector_ = 0;
-                //     rotated_ = 0;
-                //     next_state = RobotState::GO_BACK;
-                //     next_vx = -0.1;
-                //     next_wz = 0;
-                //     get_ir_right_ = 0;
-                // }
-                // else{
-                next_state = RobotState::GET_IR;
-                next_vx = -0.1;
-                next_wz = 0.0;
-                // }
+                if(linear_ > 1){
+                    dock_detector_ = 0;
+                    rotated_ = 0;
+                    next_state = RobotState::GET_IR_RETURN;
+                    next_vx = 0.1;
+                    next_wz = 0;
+                    // get_ir_right_ = 0;
+                    linear_ = 0;
+                }
+                else{
+                    if(to_get_ir_ > 20){                      
+                        next_vx = -0.05;
+                        next_wz = 0.0;
+                    }else{
+                        next_vx = 0.0;
+                        next_wz = -0.6;
+                        to_get_ir_++;
+                    }
+                    next_state = RobotState::GET_IR;
+                }
             }
         }
         else if(dock_detector_ < 0) { // robot is located left side of dock
             if (left == DockStationIRState::CENTER){
                 get_ir_left_ = 0;
+                linear_ = 0;
                 dock_detector_ = 0;
                 rotated_ = 0;
                 next_state = RobotState::SCAN_TO_ALIGN_IR;
@@ -815,19 +832,26 @@
             }
             else {
                 // get_ir_left_++;
-                // if(get_ir_left_ > 20){
-                //     dock_detector_ = 0;
-                //     rotated_ = 0;
-                //     next_state = RobotState::GO_BACK;
-                //     next_vx = -0.1;
-                //     next_wz = 0;
-                //     get_ir_left_ = 0;
-                // }
-                // else{
-                next_state = RobotState::GET_IR;
-                next_vx = -0.1;
-                next_wz = 0.0;
-                // }
+                if(linear_ > 1){
+                    dock_detector_ = 0;
+                    rotated_ = 0;
+                    next_state = RobotState::GET_IR_RETURN;
+                    next_vx = 0.1;
+                    next_wz = 0;
+                    linear_ = 0;
+                    // get_ir_left_ = 0;
+                }
+                else{
+                    if(to_get_ir_ > 20){                      
+                        next_vx = -0.05;
+                        next_wz = 0.0;
+                    }else{
+                        next_vx = 0.0;
+                        next_wz = 0.6;
+                        to_get_ir_++;
+                    }
+                    next_state = RobotState::GET_IR;
+                }
             }
         }
         else{
@@ -836,6 +860,35 @@
             next_wz = 0.0;
         }
 
+        nstate = next_state;
+        nvx = next_vx;
+        nwz = next_wz;
+    }
+    void DockDriver::get_ir_return(RobotState::State& nstate, double& nvx, double& nwz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir,
+        double& linear_update){
+        RobotState::State next_state;
+        double next_vx;
+        double next_wz;
+
+        unsigned char left  = ir->rec_left;
+        unsigned char midback   = ir->rec_midback;
+        unsigned char right = ir->rec_right;
+
+        linear_ += linear_update;
+
+        if(linear_ > 0.9 || left == DockStationIRState::RIGHT || right == DockStationIRState::LEFT){
+            next_state = RobotState::SCAN_IR;
+            next_vx = 0.0;
+            next_wz = 0.0;
+            // get_ir_return_count_ = 0;
+            linear_ = 0;
+        }else{
+            next_state = RobotState::GET_IR_RETURN;
+            next_vx = 0.08;
+            next_wz = 0.0;
+            // get_ir_return_count_ ++;
+        }
+        
         nstate = next_state;
         nvx = next_vx;
         nwz = next_wz;
@@ -910,8 +963,16 @@
         }
         else {
             next_state = RobotState::ALIGNED_IR;
-            next_vx = 0.0;
-            next_wz = 0.0;
+            if(aligned_ir_change){
+                next_vx = 0.0;
+                next_wz = -0.8;
+                aligned_ir_change = false;
+            }else{
+                next_vx = 0.0;
+                next_wz = 0.8;
+                aligned_ir_change = true;
+            }
+
         }
 
         nstate = next_state;
@@ -927,41 +988,68 @@
         unsigned char midback   = ir->rec_midback;
         unsigned char right = ir->rec_right;
 
-        if(docking_count_ > 60) 
+        RCLCPP_INFO(this->get_logger(), "--docking_ir --docking_count_: %d, to_docking_ir_: %d", docking_count_, to_docking_ir_);
+        if(docking_count_ > 100) 
         {
             next_state = RobotState::DOCKED_IN_IR;
             next_vx = 0.0;
             next_wz = 0.0;
 
             docking_count_ = 0;
-            to_docking_ir = 0;
+            to_docking_ir_ = 0;
         }
         else if(midback == DockStationIRState::CENTER){
-            if(to_docking_ir > 20){
-                next_state = RobotState::DOCKING_IR;
-                next_vx = -0.25;
-                next_wz = 0.0;
-            }else{
-                next_state = RobotState::DOCKING_IR;
-                next_vx = 0.0;
-                next_wz = -0.6;
-                to_docking_ir++;
-            }
-            
-            docking_count_++;
-        }else{
-            if(to_docking_ir > 20){
+            if(to_docking_ir_ > 40){
                 next_state = RobotState::DOCKING_IR;
                 next_vx = -0.1;
                 next_wz = 0.0;
+                docking_count_++;
             }else{
                 next_state = RobotState::DOCKING_IR;
                 next_vx = 0.0;
                 next_wz = -0.6;
-                to_docking_ir++;
+                to_docking_ir_++;
+            }
+        
+        }else if(midback == DockStationIRState::RIGHT || left == DockStationIRState::RIGHT){
+            if(to_docking_ir_ > 40){
+                next_state = RobotState::DOCKING_IR;
+                next_vx = 0.0;
+                next_wz = -0.4;
+                docking_count_++;
+            }else{
+                next_state = RobotState::DOCKING_IR;
+                next_vx = 0.0;
+                next_wz = -0.6;
+                to_docking_ir_++;
             }
 
-            docking_count_++;
+        }else if(midback == DockStationIRState::LEFT || right == DockStationIRState::LEFT){
+            if(to_docking_ir_ > 40){
+                next_state = RobotState::DOCKING_IR;
+                next_vx = 0.0;
+                next_wz = 0.4;
+                docking_count_++;
+            }else{
+                next_state = RobotState::DOCKING_IR;
+                next_vx = 0.0;
+                next_wz = -0.6;
+                to_docking_ir_++;
+            }
+
+        }else{
+            if(to_docking_ir_ > 40){
+                next_state = RobotState::DOCKING_IR;
+                next_vx = -0.05;
+                next_wz = 0.0;
+                docking_count_++;
+            }else{
+                next_state = RobotState::DOCKING_IR;
+                next_vx = 0.0;
+                next_wz = -0.6;
+                to_docking_ir_++;
+            }
+
         }
 
         nstate = next_state;

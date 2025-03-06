@@ -14,7 +14,7 @@ DockDriver::DockDriver() :
         ,state_(RobotState::IDLE)
         ,state_str_("IDLE")
         ,vx_(0.0), wz_(0.0)
-        ,ROBOT_STATE_STR(21)
+        ,ROBOT_STATE_STR(22)
         ,DOCK_VALID(false)
         ,WALL_VALID(false)
 {
@@ -37,10 +37,11 @@ DockDriver::DockDriver() :
     ROBOT_STATE_STR[14] = "SCAN_IR";
     ROBOT_STATE_STR[15] = "FIND_IR";
     ROBOT_STATE_STR[16] = "GET_IR";
-    ROBOT_STATE_STR[17] = "SCAN_TO_ALIGN_IR";
-    ROBOT_STATE_STR[18] = "ALIGNED_IR";
-    ROBOT_STATE_STR[19] = "DOCKING_IR";
-    ROBOT_STATE_STR[20] = "DOCKED_IN_IR";
+    ROBOT_STATE_STR[17] = "GET_IR_RETURN";
+    ROBOT_STATE_STR[18] = "SCAN_TO_ALIGN_IR";
+    ROBOT_STATE_STR[19] = "ALIGNED_IR";
+    ROBOT_STATE_STR[20] = "DOCKING_IR";
+    ROBOT_STATE_STR[21] = "DOCKED_IN_IR";
 
     IfFirstTime = true;
 }
@@ -147,8 +148,11 @@ void DockDriver::updateVelocity_ir(double& yaw_update, double& linear_update, co
             find_ir(new_state, new_vx, new_wz, ir);
             break;    
         case RobotState::GET_IR:
-            get_ir(new_state, new_vx, new_wz, ir);
+            get_ir(new_state, new_vx, new_wz, ir, linear_update);
             break;  
+        case RobotState::GET_IR_RETURN:
+            get_ir_return(new_state, new_vx, new_wz, ir, linear_update);
+            break; 
         case RobotState::SCAN_TO_ALIGN_IR:
             scan_to_align_ir(new_state, new_vx, new_wz, ir, yaw_update);
             break;

@@ -99,7 +99,8 @@ protected:
     void updateVelocity_ir(double& yaw_update, double& linear_update, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
     void scan_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& yaw_update);
     void find_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
-    void get_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
+    void get_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& linear_update);
+    void get_ir_return(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& linear_update);
     void scan_to_align_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& yaw_update);
     void aligned_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& yaw_update);
     void docking_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
@@ -143,7 +144,10 @@ private:
     int get_ir_left_;
     int get_ir_right_;
     int docking_count_;
-    int to_docking_ir;
+    int to_docking_ir_;
+    int get_ir_return_count_;
+    bool aligned_ir_change;
+    int to_get_ir_;
 };
 
 

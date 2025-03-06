@@ -23,6 +23,7 @@ struct RobotState {
         SCAN_IR,
         FIND_IR,
         GET_IR,
+        GET_IR_RETURN,
         SCAN_TO_ALIGN_IR,
         ALIGNED_IR,
         DOCKING_IR,
