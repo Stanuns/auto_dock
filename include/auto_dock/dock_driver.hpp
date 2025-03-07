@@ -104,6 +104,9 @@ protected:
     void scan_to_align_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& yaw_update);
     void aligned_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir, double& yaw_update);
     void docking_ir(RobotState::State& state, double& vx, double& wz, const robot_interfaces::msg::DockInfraRed::ConstSharedPtr ir);
+    void docking_ir_left(RobotState::State& state, double& vx, double& wz, double& yaw_update);
+    void docking_ir_right(RobotState::State& state, double& vx, double& wz, double& yaw_update);
+    void docking_ir_forward(RobotState::State& state, double& vx, double& wz, double& linear_update);
     void docked_in_ir(RobotState::State& state, double& vx, double& wz);
 
 

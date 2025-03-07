@@ -14,7 +14,7 @@ DockDriver::DockDriver() :
         ,state_(RobotState::IDLE)
         ,state_str_("IDLE")
         ,vx_(0.0), wz_(0.0)
-        ,ROBOT_STATE_STR(22)
+        ,ROBOT_STATE_STR(25)
         ,DOCK_VALID(false)
         ,WALL_VALID(false)
 {
@@ -41,7 +41,10 @@ DockDriver::DockDriver() :
     ROBOT_STATE_STR[18] = "SCAN_TO_ALIGN_IR";
     ROBOT_STATE_STR[19] = "ALIGNED_IR";
     ROBOT_STATE_STR[20] = "DOCKING_IR";
-    ROBOT_STATE_STR[21] = "DOCKED_IN_IR";
+    ROBOT_STATE_STR[21] = "DOCKING_IR_RIGHT",
+    ROBOT_STATE_STR[22] = "DOCKING_IR_LEFT",
+    ROBOT_STATE_STR[23] = "DOCKING_IR_FORWARD", 
+    ROBOT_STATE_STR[24] = "DOCKED_IN_IR";
 
     IfFirstTime = true;
 }
@@ -161,6 +164,15 @@ void DockDriver::updateVelocity_ir(double& yaw_update, double& linear_update, co
             break;    
         case RobotState::DOCKING_IR:
             docking_ir(new_state, new_vx, new_wz, ir);
+            break; 
+        case RobotState::DOCKING_IR_LEFT:
+            docking_ir_left(new_state, new_vx, new_wz, yaw_update);
+            break; 
+        case RobotState::DOCKING_IR_RIGHT:
+            docking_ir_right(new_state, new_vx, new_wz, yaw_update);
+            break; 
+        case RobotState::DOCKING_IR_FORWARD:
+            docking_ir_forward(new_state, new_vx, new_wz, linear_update);
             break; 
         case RobotState::DOCKED_IN_IR:
             docked_in_ir(new_state, new_vx, new_wz);

@@ -27,6 +27,9 @@ struct RobotState {
         SCAN_TO_ALIGN_IR,
         ALIGNED_IR,
         DOCKING_IR,
+        DOCKING_IR_LEFT,
+        DOCKING_IR_RIGHT,
+        DOCKING_IR_FORWARD, //-> SCAN_TO_ALIGN_IR
         DOCKED_IN_IR,
     };
 };
