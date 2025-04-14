@@ -23,6 +23,7 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
+find_package(std_msgs REQUIRED)
 
 include_directories(
   include
@@ -166,6 +167,25 @@ ament_target_dependencies(remote_auto_dock
   nav2_msgs
 )
 install(TARGETS remote_auto_dock
+    DESTINATION lib/${PROJECT_NAME}
+)
+
+add_executable(remote_auto_dock_hm src/remote_auto_dock_hm.cpp)
+ament_target_dependencies(remote_auto_dock_hm
+  rclcpp
+  rclcpp_action
+  rclcpp_components
+  message_filters
+  nav_msgs
+  geometry_msgs
+  sensor_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+  nav2_msgs
+  std_msgs
+)
+install(TARGETS remote_auto_dock_hm
     DESTINATION lib/${PROJECT_NAME}
 )
 
