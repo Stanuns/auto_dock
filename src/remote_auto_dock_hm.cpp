@@ -29,6 +29,8 @@ public:
     Node("remote_auto_dock_hm"),
     send_goal_thread_1(nullptr)
     {
+        remote_auto_dock_trigger_tag = false;
+
         is_near_dock_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/is_near_dock", 10);
         remote_auto_dock_trigger_sub_ = this->create_subscription<std_msgs::msg::UInt8>(
             "/android_voice_dock", 10, std::bind(&RemoteAutoDockHm::handle_remote_auto_dock_trigger, this, std::placeholders::_1));
@@ -50,41 +52,48 @@ public:
             send_goal_thread_1->join();
             // send_goal_thread_1.reset();
         }
+        rclcpp::shutdown();
 
     }
 
     void nav2_send_goal()
     {
-        while(!remote_auto_dock_trigger_tag){
-            sleep(1);
-            RCLCPP_INFO(this->get_logger(), "no remote auto dock trigger");
+        while(rclcpp::ok()){
+            while(!remote_auto_dock_trigger_tag){
+                sleep(1);
+                RCLCPP_INFO(this->get_logger(), "no remote auto dock trigger");
+            }
+    
+            using namespace std::placeholders;
+    
+            if (!this->nav2_client_ptr_->wait_for_action_server(std::chrono::seconds(5))) {
+                RCLCPP_ERROR(this->get_logger(), "Navigation2 Action server not available after waiting");
+                // rclcpp::shutdown();
+                return;
+            }
+    
+            auto goal_msg = NavigateToPose::Goal();
+            goal_msg.pose.pose.position.x = 0.524274f;
+            goal_msg.pose.pose.position.y = 0.959369f;
+            goal_msg.pose.pose.orientation.z = 0.662676f;
+            goal_msg.pose.pose.orientation.w = 0.748906f;
+            goal_msg.pose.header.frame_id = "map";
+    
+            RCLCPP_INFO(this->get_logger(), "navigation2 Sending goal");
+    
+            auto send_goal_options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions();
+            send_goal_options.goal_response_callback =
+                std::bind(&RemoteAutoDockHm::nav2_goal_response_callback, this, _1);
+            send_goal_options.feedback_callback =
+                std::bind(&RemoteAutoDockHm::nav2_feedback_callback, this, _1, _2);
+            send_goal_options.result_callback =
+                std::bind(&RemoteAutoDockHm::nav2_result_callback, this, _1);
+            this->nav2_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+            // RCLCPP_INFO(this->get_logger(), "navigation2 Sent goal");
+
+            remote_auto_dock_trigger_tag = false;
         }
-
-        using namespace std::placeholders;
-
-        if (!this->nav2_client_ptr_->wait_for_action_server(std::chrono::seconds(5))) {
-        RCLCPP_ERROR(this->get_logger(), "Navigation2 Action server not available after waiting");
-        rclcpp::shutdown();
-        }
-
-        auto goal_msg = NavigateToPose::Goal();
-        goal_msg.pose.pose.position.x = 0.388556f;
-        goal_msg.pose.pose.position.y = 0.949878f;
-        goal_msg.pose.pose.orientation.z = 0.585572f;
-        goal_msg.pose.pose.orientation.w = 0.810621f;
-        goal_msg.pose.header.frame_id = "map";
-
-        RCLCPP_INFO(this->get_logger(), "navigation2 Sending goal");
-
-        auto send_goal_options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions();
-        send_goal_options.goal_response_callback =
-        std::bind(&RemoteAutoDockHm::nav2_goal_response_callback, this, _1);
-        send_goal_options.feedback_callback =
-        std::bind(&RemoteAutoDockHm::nav2_feedback_callback, this, _1, _2);
-        send_goal_options.result_callback =
-        std::bind(&RemoteAutoDockHm::nav2_result_callback, this, _1);
-        this->nav2_client_ptr_->async_send_goal(goal_msg, send_goal_options);
-        // RCLCPP_INFO(this->get_logger(), "navigation2 Sent goal");
+        
     }
 
 private:
@@ -93,8 +102,8 @@ private:
     std::shared_ptr<std::thread> send_goal_thread_1;
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr is_near_dock_pub_;
     std_msgs::msg::UInt8 is_near_dock_msg;
-    bool remote_auto_dock_trigger_tag = false;
     rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr remote_auto_dock_trigger_sub_;
+    bool remote_auto_dock_trigger_tag;
 
     //navigation2
     void nav2_goal_response_callback(const GoalHandleNavigateToPose::SharedPtr & goal_handle)
@@ -129,20 +138,33 @@ private:
             for (int ii=0; ii<3; ii++){
                 is_near_dock_pub_->publish(is_near_dock_msg);
             }
+            RCLCPP_INFO(this->get_logger(), "Navigation2 nav2_result_callback is done");
             break;
             // return;
         case rclcpp_action::ResultCode::ABORTED:
             RCLCPP_ERROR(this->get_logger(), "Navigation2 Goal was aborted");
-            return;
+            break;
+            // return;
         case rclcpp_action::ResultCode::CANCELED:
             RCLCPP_ERROR(this->get_logger(), "Navigation2 Goal was canceled");
-            return;
+            break;
+            // return;
         default:
             RCLCPP_ERROR(this->get_logger(), "Unknown result code");
-            return;
+            break;
+            // return;
         }
         // rclcpp::shutdown();
-        RCLCPP_INFO(this->get_logger(), "Navigation2 nav2_result_callback is done");
+
+        // Call nav2_send_goal() again after the result is processed
+        // std::thread([this]() {
+        //     nav2_send_goal();
+        // }).detach();
+        // remote_auto_dock_trigger_tag = false;
+        // auto future = std::async(std::launch::async, [this]() {
+        //     nav2_send_goal();
+        //   });
+
     }
 
     void handle_remote_auto_dock_trigger(const std_msgs::msg::UInt8::ConstSharedPtr msg){
