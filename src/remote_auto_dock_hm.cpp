@@ -68,10 +68,10 @@ public:
         }
 
         auto goal_msg = NavigateToPose::Goal();
-        goal_msg.pose.pose.position.x = 0.15f;
-        goal_msg.pose.pose.position.y = 0.0f;
-        goal_msg.pose.pose.orientation.z = 0.7197f;
-        // goal_msg.pose.pose.orientation.w = 1.0f;
+        goal_msg.pose.pose.position.x = 0.388556f;
+        goal_msg.pose.pose.position.y = 0.949878f;
+        goal_msg.pose.pose.orientation.z = 0.585572f;
+        goal_msg.pose.pose.orientation.w = 0.810621f;
         goal_msg.pose.header.frame_id = "map";
 
         RCLCPP_INFO(this->get_logger(), "navigation2 Sending goal");
