@@ -189,6 +189,25 @@ install(TARGETS remote_auto_dock_hm
     DESTINATION lib/${PROJECT_NAME}
 )
 
+add_executable(nav_to_goal_recycle src/nav_to_goal_recycle.cpp)
+ament_target_dependencies(nav_to_goal_recycle
+  rclcpp
+  rclcpp_action
+  rclcpp_components
+  message_filters
+  nav_msgs
+  geometry_msgs
+  sensor_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+  nav2_msgs
+  std_msgs
+)
+install(TARGETS nav_to_goal_recycle
+    DESTINATION lib/${PROJECT_NAME}
+)
+
 add_library(dock_action_client SHARED #if use 'action_client', ‘ros2 run auto_dock auto_dock_action_client’ cannot run successfully.
   src/auto_dock_client.cpp)
 target_include_directories(dock_action_client PRIVATE
