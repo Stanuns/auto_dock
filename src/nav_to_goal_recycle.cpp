@@ -78,16 +78,16 @@ public:
             if(count==0){
                 goal_msg.pose.pose.position.x = -1.095f;
                 goal_msg.pose.pose.position.y = -2.0801f;
-                goal_msg.pose.pose.orientation.z = -0.194036f;
-                goal_msg.pose.pose.orientation.w = 0.980994f;
+                goal_msg.pose.pose.orientation.z = -0.03506f;
+                goal_msg.pose.pose.orientation.w = 0.99939f;
             }else if(count==1){
-                goal_msg.pose.pose.position.x = -0.86456f;
-                goal_msg.pose.pose.position.y = 0.83849f;
+                goal_msg.pose.pose.position.x = -0.39103f;
+                goal_msg.pose.pose.position.y = 0.85716f;
                 goal_msg.pose.pose.orientation.z = 0.053317f;
                 goal_msg.pose.pose.orientation.w = 0.99858f;
             }else if(count==2){
-                goal_msg.pose.pose.position.x = 1.9808f;
-                goal_msg.pose.pose.position.y = 0.82998f;
+                goal_msg.pose.pose.position.x = 1.8553f;
+                goal_msg.pose.pose.position.y = -0.14975f;
                 goal_msg.pose.pose.orientation.z = -0.71402f;
                 goal_msg.pose.pose.orientation.w = 0.70012f;
             }else if(count==3){
