@@ -15,6 +15,7 @@
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "std_msgs/msg/u_int8.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 
 namespace auto_dock
 {
@@ -32,6 +33,7 @@ public:
         remote_auto_dock_trigger_tag = false;
 
         is_near_dock_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/is_near_dock", 10);
+        cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         remote_auto_dock_trigger_sub_ = this->create_subscription<std_msgs::msg::UInt8>(
             "/android_voice_dock", 10, std::bind(&RemoteAutoDockHm::handle_remote_auto_dock_trigger, this, std::placeholders::_1));
 
@@ -101,6 +103,7 @@ private:
     // bool IsNearDock = false;
     std::shared_ptr<std::thread> send_goal_thread_1;
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr is_near_dock_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
     std_msgs::msg::UInt8 is_near_dock_msg;
     rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr remote_auto_dock_trigger_sub_;
     bool remote_auto_dock_trigger_tag;
@@ -164,6 +167,13 @@ private:
         // auto future = std::async(std::launch::async, [this]() {
         //     nav2_send_goal();
         //   });
+        geometry_msgs::msg::Twist msg;
+        msg.linear.x = 0.0;
+        msg.angular.z = 0.0;
+        for(int ii=0; ii < 10; ii++){
+            cmd_vel_pub_->publish(msg);
+            sleep(0.01);
+        }
 
     }
 

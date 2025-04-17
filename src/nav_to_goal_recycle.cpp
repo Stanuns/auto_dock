@@ -15,6 +15,7 @@
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "std_msgs/msg/u_int8.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 
 namespace auto_dock
 {
@@ -26,7 +27,7 @@ public:
     using GoalHandleNavigateToPose = rclcpp_action::ClientGoalHandle<NavigateToPose>;
 
     NavToGoalRecycle(): 
-    Node("remote_auto_dock_hm"),
+    Node("nav_to_goal_recycle"),
     send_goal_thread_1(nullptr)
     {
         nav_to_next_goal_tag = true;
@@ -34,6 +35,7 @@ public:
         count = 0;
         count_direction = 1;
         is_near_dock_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/is_near_dock", 10);
+        cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         nav_to_goal_recycle_sub_ = this->create_subscription<std_msgs::msg::UInt8>(
             "/nav_to_goal_recycle_trigger", 10, std::bind(&NavToGoalRecycle::handle_nav_to_goal_recycle_trigger, this, std::placeholders::_1));
 
@@ -61,9 +63,9 @@ public:
     void nav2_send_goal()
     {
         while(rclcpp::ok() && node_exec){
-            while(!nav_to_next_goal_tag){
+            while(!nav_to_next_goal_tag && node_exec){
                 sleep(1);
-                RCLCPP_INFO(this->get_logger(), "do not nav to nex goal");
+                RCLCPP_INFO(this->get_logger(), "Do not nav to next goal");
             }
 
             if(node_exec){
@@ -130,6 +132,7 @@ private:
     // bool IsNearDock = false;
     std::shared_ptr<std::thread> send_goal_thread_1;
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr is_near_dock_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
     std_msgs::msg::UInt8 is_near_dock_msg;
     rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr nav_to_goal_recycle_sub_;
     bool nav_to_next_goal_tag, node_exec;
@@ -139,9 +142,9 @@ private:
     void nav2_goal_response_callback(const GoalHandleNavigateToPose::SharedPtr & goal_handle)
     {
         if (!goal_handle) {
-        RCLCPP_ERROR(this->get_logger(), "Navigation2 Goal was rejected by server");
+            RCLCPP_ERROR(this->get_logger(), "Navigation2 Goal was rejected by server");
         } else {
-        RCLCPP_INFO(this->get_logger(), "Navigation2 Goal accepted by server, waiting for result");
+            RCLCPP_INFO(this->get_logger(), "Navigation2 Goal accepted by server, waiting for result");
         }
     }
 
@@ -163,11 +166,6 @@ private:
 
             // dock_send_goal();
             // IsNearDock = true;
-            //发布到topic /is_near_dock 1  与 huamei base_driver联动
-            is_near_dock_msg.data = 1;  // 设置 UInt8 数据
-            for (int ii=0; ii<3; ii++){
-                is_near_dock_pub_->publish(is_near_dock_msg);
-            }
             RCLCPP_INFO(this->get_logger(), "Navigation2 nav2_result_callback is done");
             break;
             // return;
@@ -186,6 +184,13 @@ private:
         }
         // rclcpp::shutdown();
         nav_to_next_goal_tag = true;
+        geometry_msgs::msg::Twist msg;
+        msg.linear.x = 0.0;
+        msg.angular.z = 0.0;
+        for(int ii=0; ii < 10; ii++){
+            cmd_vel_pub_->publish(msg);
+            sleep(0.01);
+        }
     }
 
     void handle_nav_to_goal_recycle_trigger(const std_msgs::msg::UInt8::ConstSharedPtr msg){
@@ -194,8 +199,8 @@ private:
         }else if(msg->data == 0){
             nav_to_next_goal_tag = false;
             RCLCPP_INFO(this->get_logger(), "topic /nav_to_goal_recycle_trigger nav_to_next_goal_tag is 0, shut down the node");
-            // rclcpp::shutdown();
             node_exec = false;
+            rclcpp::shutdown();
         }     
     }
 
