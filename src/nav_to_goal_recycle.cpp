@@ -30,11 +30,12 @@ public:
     send_goal_thread_1(nullptr)
     {
         nav_to_next_goal_tag = true;
+        node_exec = true;
         count = 0;
         count_direction = 1;
         is_near_dock_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/is_near_dock", 10);
-        // remote_auto_dock_trigger_sub_ = this->create_subscription<std_msgs::msg::UInt8>(
-        //     "/android_voice_dock", 10, std::bind(&NavToGoalRecycle::handle_remote_auto_dock_trigger, this, std::placeholders::_1));
+        nav_to_goal_recycle_sub_ = this->create_subscription<std_msgs::msg::UInt8>(
+            "/nav_to_goal_recycle_trigger", 10, std::bind(&NavToGoalRecycle::handle_nav_to_goal_recycle_trigger, this, std::placeholders::_1));
 
         this->nav2_client_ptr_ = rclcpp_action::create_client<NavigateToPose>(
         this,
@@ -59,62 +60,65 @@ public:
 
     void nav2_send_goal()
     {
-        while(rclcpp::ok()){
+        while(rclcpp::ok() && node_exec){
             while(!nav_to_next_goal_tag){
                 sleep(1);
                 RCLCPP_INFO(this->get_logger(), "do not nav to nex goal");
             }
 
-            using namespace std::placeholders;
+            if(node_exec){
+                using namespace std::placeholders;
 
-            if (!this->nav2_client_ptr_->wait_for_action_server(std::chrono::seconds(5))) {
-                RCLCPP_ERROR(this->get_logger(), "Navigation2 Action server not available after waiting");
-                // rclcpp::shutdown();
-                return;
-            }
-
-            auto goal_msg = NavigateToPose::Goal();
-            goal_msg.pose.header.frame_id = "map";
-            if(count==0){
-                goal_msg.pose.pose.position.x = -1.095f;
-                goal_msg.pose.pose.position.y = -2.0801f;
-                goal_msg.pose.pose.orientation.z = -0.03506f;
-                goal_msg.pose.pose.orientation.w = 0.99939f;
-            }else if(count==1){
-                goal_msg.pose.pose.position.x = -0.39103f;
-                goal_msg.pose.pose.position.y = 0.85716f;
-                goal_msg.pose.pose.orientation.z = 0.053317f;
-                goal_msg.pose.pose.orientation.w = 0.99858f;
-            }else if(count==2){
-                goal_msg.pose.pose.position.x = 1.8553f;
-                goal_msg.pose.pose.position.y = -0.14975f;
-                goal_msg.pose.pose.orientation.z = -0.71402f;
-                goal_msg.pose.pose.orientation.w = 0.70012f;
-            }else if(count==3){
-                goal_msg.pose.pose.position.x = 3.0204f;
-                goal_msg.pose.pose.position.y = -2.8312f;
-                goal_msg.pose.pose.orientation.z = 0.99076f;
-                goal_msg.pose.pose.orientation.w = -0.13564f;
-            }
-            count += count_direction;
-            if (count >= 3){
-                count_direction = -1;
-            }else if(count <=0 ){
-                count_direction = 1;
+                if (!this->nav2_client_ptr_->wait_for_action_server(std::chrono::seconds(5))) {
+                    RCLCPP_ERROR(this->get_logger(), "Navigation2 Action server not available after waiting");
+                    // rclcpp::shutdown();
+                    return;
+                }
+    
+                auto goal_msg = NavigateToPose::Goal();
+                goal_msg.pose.header.frame_id = "map";
+                if(count==0){
+                    goal_msg.pose.pose.position.x = -1.095f;
+                    goal_msg.pose.pose.position.y = -2.0801f;
+                    goal_msg.pose.pose.orientation.z = -0.19404f;
+                    goal_msg.pose.pose.orientation.w = 0.98099f;
+                }else if(count==1){
+                    goal_msg.pose.pose.position.x = -0.23927f;
+                    goal_msg.pose.pose.position.y = 0.79599f;
+                    goal_msg.pose.pose.orientation.z = 0.72072f;
+                    goal_msg.pose.pose.orientation.w = 0.69323f;
+                }else if(count==2){
+                    goal_msg.pose.pose.position.x = 1.8553f;
+                    goal_msg.pose.pose.position.y = -0.14975f;
+                    goal_msg.pose.pose.orientation.z = -0.71402f; //-0.71402
+                    goal_msg.pose.pose.orientation.w = 0.70012f; //0.70012
+                }else if(count==3){
+                    goal_msg.pose.pose.position.x = 3.0204f;
+                    goal_msg.pose.pose.position.y = -2.8312f;
+                    goal_msg.pose.pose.orientation.z = 0.99076f;
+                    goal_msg.pose.pose.orientation.w = -0.13564f;
+                }
+                count += count_direction;
+                if (count >= 3){
+                    count_direction = -1;
+                }else if(count <=0 ){
+                    count_direction = 1;
+                }
+                
+    
+                RCLCPP_INFO(this->get_logger(), "navigation2 Sending goal, count: %d", count);
+    
+                auto send_goal_options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions();
+                send_goal_options.goal_response_callback =
+                    std::bind(&NavToGoalRecycle::nav2_goal_response_callback, this, _1);
+                send_goal_options.feedback_callback =
+                    std::bind(&NavToGoalRecycle::nav2_feedback_callback, this, _1, _2);
+                send_goal_options.result_callback =
+                    std::bind(&NavToGoalRecycle::nav2_result_callback, this, _1);
+                this->nav2_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+                // RCLCPP_INFO(this->get_logger(), "navigation2 Sent goal");
             }
             
-
-            RCLCPP_INFO(this->get_logger(), "navigation2 Sending goal, count: %d", count);
-
-            auto send_goal_options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions();
-            send_goal_options.goal_response_callback =
-                std::bind(&NavToGoalRecycle::nav2_goal_response_callback, this, _1);
-            send_goal_options.feedback_callback =
-                std::bind(&NavToGoalRecycle::nav2_feedback_callback, this, _1, _2);
-            send_goal_options.result_callback =
-                std::bind(&NavToGoalRecycle::nav2_result_callback, this, _1);
-            this->nav2_client_ptr_->async_send_goal(goal_msg, send_goal_options);
-            // RCLCPP_INFO(this->get_logger(), "navigation2 Sent goal");
 
             nav_to_next_goal_tag = false;
         }
@@ -127,8 +131,8 @@ private:
     std::shared_ptr<std::thread> send_goal_thread_1;
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr is_near_dock_pub_;
     std_msgs::msg::UInt8 is_near_dock_msg;
-    // rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr remote_auto_dock_trigger_sub_;
-    bool nav_to_next_goal_tag;
+    rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr nav_to_goal_recycle_sub_;
+    bool nav_to_next_goal_tag, node_exec;
     int count, count_direction;
 
     //navigation2
@@ -145,7 +149,7 @@ private:
         GoalHandleNavigateToPose::SharedPtr,
         const std::shared_ptr<const NavigateToPose::Feedback> feedback)
     {
-        RCLCPP_INFO(get_logger(), "Distance remaining: %f", feedback->distance_remaining);
+        // RCLCPP_INFO(get_logger(), "Distance remaining: %f", feedback->distance_remaining);
 
         is_near_dock_msg.data = 0; 
         is_near_dock_pub_->publish(is_near_dock_msg);
@@ -182,6 +186,17 @@ private:
         }
         // rclcpp::shutdown();
         nav_to_next_goal_tag = true;
+    }
+
+    void handle_nav_to_goal_recycle_trigger(const std_msgs::msg::UInt8::ConstSharedPtr msg){
+        if(msg->data == 1){
+            nav_to_next_goal_tag = true;
+        }else if(msg->data == 0){
+            nav_to_next_goal_tag = false;
+            RCLCPP_INFO(this->get_logger(), "topic /nav_to_goal_recycle_trigger nav_to_next_goal_tag is 0, shut down the node");
+            // rclcpp::shutdown();
+            node_exec = false;
+        }     
     }
 
 };  // class NavToGoalRecycle

@@ -119,7 +119,7 @@ private:
         GoalHandleNavigateToPose::SharedPtr,
         const std::shared_ptr<const NavigateToPose::Feedback> feedback)
     {
-        RCLCPP_INFO(get_logger(), "Distance remaining: %f", feedback->distance_remaining);
+        // RCLCPP_INFO(get_logger(), "Distance remaining: %f", feedback->distance_remaining);
 
         is_near_dock_msg.data = 0; 
         is_near_dock_pub_->publish(is_near_dock_msg);
