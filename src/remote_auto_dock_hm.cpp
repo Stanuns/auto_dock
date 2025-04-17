@@ -75,8 +75,8 @@ public:
             }
     
             auto goal_msg = NavigateToPose::Goal();
-            goal_msg.pose.pose.position.x = 0.524274f;
-            goal_msg.pose.pose.position.y = 0.959369f;
+            goal_msg.pose.pose.position.x = 0.59847f;
+            goal_msg.pose.pose.position.y = 1.10564f;
             goal_msg.pose.pose.orientation.z = 0.662676f;
             goal_msg.pose.pose.orientation.w = 0.748906f;
             goal_msg.pose.header.frame_id = "map";
